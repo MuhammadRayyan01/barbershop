@@ -56,3 +56,51 @@
           <span class="text-xs font-bold text-gray-400 tracking-wider">LANGKAH 2/4</span>
     </div>
 
+<!-- Kartu 1: Kondisi Terpilih (Active State) -->
+<button type="button" class="card-option border border-gray-200 bg-white rounded-xl p-4 text-left shadow-sm relative cursor-pointer w-full transition hover:border-gray-300" onclick="selectCard(this)">
+  <!-- Icon Centang -->
+  
+  <h3 class="font-bold text-[#0d3b36] text-sm">Classic Haircut</h3>
+  <div class="flex gap-2 text-[11px] text-gray-500 my-2">
+    <span>30 Menit</span>
+    <span>•</span>
+    <span>Grooming Dasar</span>
+  </div>
+  <p class="text-xs text-gray-500 leading-relaxed">
+    Potong rambut presisi, cuci rambut ringan, styling pomade.
+  </p>
+  <div class="mt-4 pt-2 flex justify-between items-center text-xs">
+    <span class="text-gray-400 text-[11px]">Biaya Reservasi</span>
+    <span class="font-bold text-[#0d3b36]">Rp 50.000</span>
+  </div>
+</button>
+
+<!-- Kartu 2: Kondisi Belum Terpilih -->
+<button type="button" class="card-option border border-gray-200 bg-white rounded-xl p-4 text-left shadow-sm relative cursor-pointer w-full transition hover:border-gray-300" onclick="selectCard(this)">
+  <!-- Icon Centang (Awalnya tersembunyi dengan class 'hidden') -->
+  
+  <h3 class="font-bold text-[#0d3b36] text-sm">Haircut & Wash Deluxe</h3>
+  <div class="flex gap-2 text-[11px] text-gray-500 my-2">
+    <span>45 Menit</span>
+    <span>•</span>
+    <span>Paling Favorit</span>
+  </div>
+  <p class="text-xs text-gray-500 leading-relaxed">
+    Potong rambut, keramas menthol segar, dan pijat relaksasi kepala.
+  </p>
+  <div class="mt-4 pt-2 flex justify-between items-center text-xs">
+    <span class="text-gray-400 text-[11px]">Biaya Reservasi</span>
+    <span class="font-bold text-[#0d3b36]">Rp 65.000</span>
+  </div>
+</button>
+
+  <footer class="max-w-6xl w-full mx-auto text-[11px] text-gray-400 flex flex-col md:flex-row justify-between items-center py-6 border-t border-gray-200/60 mt-8 gap-2">
+    <p>© 2025 Pemon Barbershop. All rights reserved.</p>
+    <div class="flex gap-4">
+      <a href="#" class="hover:underline">Syarat & Ketentuan</a>
+      <a href="#" class="hover:underline">Bantuan</a>
+    </div>
+  </footer>
+
+</body>
+</html>
