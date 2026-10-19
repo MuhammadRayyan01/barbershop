@@ -8,10 +8,41 @@
             font-family: 'Arial', sans-serif; /* Change 'Arial' to your desired font */
         }
     </style>
-    <title>Change Font Example</title>
+    <title>Pemon Barbershop</title>
+
+    <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Hello World!</h1>
-    <p>This text is using the specified font.</p>
-</body>
+<body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
+
+  <!-- Header / Navbar -->
+  <header class="max-w-5xl w-full mx-auto flex justify-between items-center py-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-[#0d3b36] text-white flex items-center justify-center rounded-lg font-bold text-xl">P</div>
+      <span class="font-bold tracking-wide">PEMON <br><span class="text-xs font-normal text-gray-500">BARBERSHOP</span></span>
+    </div>
+    <nav class="hidden md:flex gap-6 font-medium text-sm">
+        <ul>
+            <li>
+                <a href="../dashboard/index.html" class="font-bold border-b-2 border-[#0d3b36]">Dashboard</a>
+           
+           
+                <a href="../dashboard/schedule.page" class="text-gray-600 hover:text-black">Schedule</a>
+          
+           
+                <a href="../dashboard/aboutUs.html" class="text-gray-600 hover:text-black">About us</a>
+            </li>
+           
+        </ul>
+    </nav>
+    </header>
+
+ <!-- Footer -->
+  <footer class="max-w-5xl w-full mx-auto text-xs text-gray-400 flex justify-between items-center py-4">
+    <p>© 2025 Pemon Barbershop. All rights reserved.</p>
+    <div class="flex gap-4">
+      <a href="#" class="hover:underline">Syarat & Ketentuan</a>
+      <a href="#" class="hover:underline">Bantuan</a>
+    </div>
+  </footer>
 </html>
