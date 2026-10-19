@@ -94,13 +94,56 @@
   </div>
 </button>
 
-  <footer class="max-w-6xl w-full mx-auto text-[11px] text-gray-400 flex flex-col md:flex-row justify-between items-center py-6 border-t border-gray-200/60 mt-8 gap-2">
+<!-- 1. BAGIAN TANGGAL (Pills Button) -->
+    <div>
+      <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
+      <!-- Gunakan class "date-group" sebagai pembungkus -->
+      <div id="date-group" class="flex flex-wrap gap-2">
+        <button onclick="selectDate(this)" class="date-btn bg-[#e8f3ee] border border-[#12372a] text-[#12372a] font-bold text-xs px-4 py-2 rounded-full transition">Hari Ini, 22 Okt</button>
+        <button onclick="selectDate(this)" class="date-btn bg-gray-50 border border-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full hover:bg-gray-100 transition">Besok, 23 Okt</button>
+        <button onclick="selectDate(this)" class="date-btn bg-gray-50 border border-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full hover:bg-gray-100 transition">Kamis, 24 Okt</button>
+        <button onclick="selectDate(this)" class="date-btn bg-gray-50 border border-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full hover:bg-gray-100 transition">Jumat, 25 Okt</button>
+      </div>
+    </div>
+
+    <!-- 2. BAGIAN SLOT WAKTU (Time Button) -->
+    <div>
+      <div class="flex justify-between items-center mb-2">
+        <label class="text-xs font-bold text-[#12372a]">Slot Waktu Tersedia</label>
+        <span class="text-[11px] text-gray-400">Zona Waktu WIB</span>
+      </div>
+      <!-- Gunakan class "time-group" sebagai pembungkus -->
+      <div id="time-group" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">10:00</button>
+        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">11:00</button>
+        <button onclick="selectTime(this)" class="time-btn bg-[#12372a] text-white font-bold py-2 rounded-lg text-xs transition">13:00</button>
+        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">15:30</button>
+        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">17:00</button>
+        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">19:00</button>
+      </div>
+    </div>
+    <!-- Tombol Aksi Bawah -->
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+          <span class="text-xs text-gray-500 flex items-center gap-1">
+             Konfirmasi instan tanpa biaya admin
+          </span>
+          <div class="flex gap-3 w-full sm:w-auto">
+            <a href="../dashboard/index.html"> &larr; Kembali </a>             
+
+            <a href="../booking/confirmation.html"> Lanjut ke Data Diri &rarr;</a>             
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+</body>
+ <footer class="max-w-6xl w-full mx-auto text-[11px] text-gray-400 flex flex-col md:flex-row justify-between items-center py-6 border-t border-gray-200/60 mt-8 gap-2">
     <p>© 2025 Pemon Barbershop. All rights reserved.</p>
     <div class="flex gap-4">
       <a href="#" class="hover:underline">Syarat & Ketentuan</a>
       <a href="#" class="hover:underline">Bantuan</a>
     </div>
   </footer>
-
-</body>
 </html>
