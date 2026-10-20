@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif; /* Change 'Arial' to your desired font */
+        }
+    </style>
+    <title>Pemon Barbershop</title>
+
+    <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
+
+  <!-- Header / Navbar -->
+  <header class="max-w-5xl w-full mx-auto flex justify-between items-center py-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-[#0d3b36] text-white flex items-center justify-center rounded-lg font-bold text-xl">P</div>
+      <span class="font-bold tracking-wide">PEMON <br><span class="text-xs font-normal text-gray-500">BARBERSHOP</span></span>
+    </div>
+    <nav class="hidden md:flex gap-6 font-medium text-sm">
+        <ul>
+            <li>
+                <a href="../dashboard/index.html" class="text-gray-600 hover:text-black">Dashboard</a>
+           
+           
+                <a href="../dashboard/schedule.html" class="text-gray-600 hover:text-black">Schedule</a>
+          
+           
+                <a href="../dashboard/aboutUs.html" class="text-gray-600 hover:text-black">About us</a>
+            </li>
+           
+        </ul>
+    </nav>
+    </header>
+    <!-- Container Utama -->
+  <main class="max-w-2xl w-full mx-auto px-4 py-8">
+    
+    <!-- Stepper / Indikator Langkah (Semua Tercentang) -->
+    <div class="text-center text-xs text-gray-500 mb-8 font-medium flex justify-center items-center gap-2">
+      <span>✓ 1. Lokasi</span> <span class="text-gray-300">/</span> 
+      <span>✓ 2. Layanan & Jadwal</span> <span class="text-gray-300">/</span> 
+      <span>✓ 3. Data Diri</span> <span class="text-gray-300">/</span> 
+      <span class="font-bold text-[#12372a]">✓ 4. Selesai</span>
+    </div>
+
+    <!-- Header Status Sukses -->
+    <div class="text-center mb-6 space-y-2">
+      <div class="w-12 h-12 bg-[#12372a] text-white rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-sm">
+        ✓
+      </div>
+      <h2 class="text-sm font-bold text-[#12372a]">Reservasi Berhasil Dikonfirmasi!</h2>
+      <p class="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+        Tiket digital dan pengingat jadwal telah dikirimkan ke WhatsApp Anda di <strong class="text-gray-700">+62 812–8940–2190</strong>.
+      </p>
+    </div>
+
+    <!-- E-TICKET CARD (KARTU TIKET DENGAN DASAR PUTIH) -->
+    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-md p-6 sm:p-8 space-y-6 relative overflow-hidden">
+      
+      <!-- Top Ticket Header -->
+      <div class="flex justify-between items-start border-b border-gray-100 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-7 h-7 bg-[#12372a] text-white flex items-center justify-center rounded text-xs font-bold">P</div>
+          <div>
+            <span class="text-[10px] font-bold text-gray-400 tracking-wider block">E-TICKET BARBERSHOP</span>
+            <h3 class="text-xs font-extrabold text-[#12372a]">PEMON STUDIO SENOPATI</h3>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="bg-[#e8f3ee] text-[#12372a] text-[10px] font-bold px-2.5 py-0.5 rounded tracking-wide inline-block mb-1">
+            TERKONFIRMASI
+          </span>
+          <p class="text-[10px] text-gray-400 font-medium">KODE BOOKING</p>
+          <p class="text-xs font-bold text-[#12372a] tracking-wider">#PMN-88219</p>
+        </div>
+      </div>
+
+      <!-- Detail Grid Baris 1: Layanan & Lokasi -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>✂️</span> LAYANAN DIPILIH
+          </p>
+          <p class="font-bold text-[#12372a]">Classic Haircut</p>
+          <p class="text-[11px] text-gray-500">Durasi pengerjaan: 30 Menit &bull; Konsultasi Gaya & Cuci Bersih</p>
+        </div>
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🏬</span> LOKASI CABANG
+          </p>
+          <p class="font-bold text-[#12372a]">Studio Senopati</p>
+          <p class="text-[11px] text-gray-500">Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan</p>
+        </div>
+      </div>
+
+      <!-- Detail Grid Baris 2: Hari/Tanggal & Waktu -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>📅</span> HARI & TANGGAL
+          </p>
+          <p class="font-bold text-[#12372a]">Hari Ini, Selasa 22 Okt 2024</p>
+          <p class="text-[11px] text-gray-500">Sesi Kunjungan Sore</p>
+        </div>
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🕒</span> WAKTU RESERVASI
+          </p>
+          <p class="font-bold text-[#12372a]">Pukul 13:00 WIB</p>
+          <p class="text-[11px] text-gray-500">🕒 Disarankan tiba 10 menit lebih awal</p>
+        </div>
+      </div>
+
+      <!-- Detail Grid Baris 3: Pemesan & Barber -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>👤</span> NAMA PEMESAN
+          </p>
+          <p class="font-bold text-[#12372a]">Raffy Kurnia</p>
+          <p class="text-[11px] text-gray-500">+62 812–8940–2190 &bull; VIP Client</p>
+        </div>
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>💈</span> ARTISAN / BARBER
+          </p>
+          <p class="font-bold text-[#12372a]">Siapa Saja (Tersedia Tercepat)</p>
+          <p class="text-[11px] text-gray-500">Assigned to Master Stylist On-Duty</p>
+        </div>
+      </div>
+
+      <!-- Catatan Khusus & Total Pembayaran -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-3 border-t border-dashed border-gray-200">
+        <div class="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>✂️</span> CATATAN KHUSUS UNTUK BARBER
+          </p>
+          <p class="text-[11px] text-gray-700 italic">"Rambut samping fade tipis, bagian atas rapikan sedikit saja."</p>
+          <p class="text-[10px] text-gray-400 mt-2 flex items-center gap-1">🛡️ Sterilisasi instrumen terstandarisasi sebelum sesi Anda</p>
+        </div>
+
+        <div class="space-y-1 bg-[#fbfdfc] p-3 rounded-xl border border-gray-100 flex flex-col justify-between">
+          <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">TOTAL PEMBAYARAN</p>
+            <p class="text-sm font-extrabold text-[#12372a] mt-0.5">Rp 50.000</p>
+            <p class="text-[10px] text-gray-500">Bayar di Kasir Studio (QRIS / Tunai / Debit)</p>
+          </div>
+          <div class="flex justify-between items-center text-[11px] pt-2 border-t border-gray-100">
+            <span class="text-gray-400">Status Tagihan:</span>
+            <span class="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">Belum Dibayar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Code Section & Tombol Aksi Tiket -->
+      <div class="bg-gray-50 p-4 rounded-xl border border-gray-200/70 flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
+        <div class="flex items-center gap-3">
+          <!-- Dummy QR Icon / Box -->
+          <div class="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center font-bold text-base text-[#12372a] shadow-sm">
+            📱
+          </div>
+          <div>
+            <p class="text-xs font-bold text-[#12372a]">Tunjukkan QR saat Tiba di Resepsionis</p>
+            <p class="text-[10px] text-gray-500">Petugas kami akan langsung mengarahkan Anda ke kursi pangkas</p>
+          </div>
+        </div>
+
+        <div class="flex gap-2 w-full sm:w-auto">
+          <button onclick="window.print()" class="flex-1 sm:flex-initial px-3 py-2 bg-white border border-gray-300 rounded-lg text-[11px] font-semibold text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-1">
+            📥 Unduh E-Tiket (PDF)
+          </button>
+          <button class="flex-1 sm:flex-initial px-3 py-2 bg-white border border-gray-300 rounded-lg text-[11px] font-semibold text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-1">
+            📅 Kalender
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Banner Jaminan Tepat Waktu -->
+    <div class="bg-white border border-gray-200/80 rounded-2xl p-4 mt-4 flex justify-between items-center text-xs">
+      <div class="flex items-center gap-3">
+        <span class="text-base">⏱️</span>
+        <div>
+          <p class="font-bold text-[#12372a]">Jaminan Tepat Waktu Pemon</p>
+          <p class="text-[11px] text-gray-500">Jika Anda menunggu lebih dari 15 menit melewati jadwal tanpa pemberitahuan, nikmati gratis Hair Wash & Tonic.</p>
+        </div>
+      </div>
+      <a href="#" class="text-xs text-gray-600 font-semibold hover:underline whitespace-nowrap ml-2">Panduan Kedatangan &rsaquo;</a>
+    </div>
+
+    <!-- Tombol Navigasi Bawah -->
+    <div class="flex justify-center gap-3 mt-6">
+      <a href="index.html" class="px-5 py-2.5 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition flex items-center gap-2 shadow-sm">
+        🏠 Kembali ke Beranda
+      </a>
+      <button onclick="window.print()" class="px-5 py-2.5 bg-gray-100 border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
+        🖨️ Cetak Tiket
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200 mt-12 py-4 px-6 text-xs text-gray-400 flex justify-between items-center max-w-2xl w-full mx-auto">
+    <p>© 2025 Pemon Barbershop. All rights reserved.</p>
+    <div class="flex gap-4">
+      <a href="#" class="hover:underline">Syarat & Ketentuan</a>
+      <a href="#" class="hover:underline">Bantuan</a>
+    </div>
+  </footer>
+
+</body>
+</html>
