@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif; /* Change 'Arial' to your desired font */
+        }
+    </style>
+    <title>Pemon Barbershop</title>
+
+    <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
+
+  <!-- Header / Navbar -->
+  <header class="max-w-5xl w-full mx-auto flex justify-between items-center py-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-[#0d3b36] text-white flex items-center justify-center rounded-lg font-bold text-xl">P</div>
+      <span class="font-bold tracking-wide">PEMON <br><span class="text-xs font-normal text-gray-500">BARBERSHOP</span></span>
+    </div>
+    <nav class="hidden md:flex gap-6 font-medium text-sm">
+        <ul>
+            <li>
+                <a href="../dashboard/index.html" class="text-gray-600 hover:text-black">Dashboard</a>
+           
+           
+                <a href="../dashboard/schedule.html" class="text-gray-600 hover:text-black">Schedule</a>
+          
+           
+                <a href="../dashboard/aboutUs.html" class="text-gray-600 hover:text-black">About us</a>
+            </li>
+           
+        </ul>
+    </nav>
+    </header>
+<!-- Container Utama -->
+  <main class="max-w-3xl w-full mx-auto px-4 py-8">
+    
+    <!-- Stepper / Indikator Langkah -->
+    <div class="text-center text-xs text-gray-400 mb-6 font-medium">
+      <span>1. Lokasi</span> / 
+      <span>2. Layanan & Jadwal</span> / 
+      <span class="font-bold text-[#12372a]">3. Data Diri</span> / 
+      <span>4. Selesai</span>
+    </div>
+
+    <!-- Judul & Info Langkah -->
+    <div class="text-center mb-8 space-y-1">
+      <span class="text-[11px] font-semibold text-gray-400 bg-gray-200/60 px-3 py-1 rounded-full">
+        &raquo; Langkah 3 dari 4 &bull; Pengisian Data Pemesan
+      </span>
+      <h2 class="text-base font-bold text-[#12372a] mt-2">Lengkapi Data Diri & Konfirmasi</h2>
+      <p class="text-xs text-gray-500">Tiket reservasi digital dan notifikasi jadwal akan dikirimkan otomatis ke kontak WhatsApp Anda.</p>
+    </div>
+
+    <!-- Kotak Form Utama -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200/80 shadow-sm space-y-6">
+
+      <!-- 1. Input Nama Lengkap -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center text-xs">
+          <label class="font-bold text-gray-700">Nama Lengkap Pemesan</label>
+          <span class="text-gray-400 text-[11px]">Wajib diisi</span>
+        </div>
+        <div class="relative flex items-center">
+          <input type="text" value="Raffy Kurnia" class="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-[#12372a] focus:outline-none focus:border-[#12372a]">
+          <span class="absolute right-3.5 text-xs text-green-600 font-bold"></span>
+        </div>
+      </div>
+
