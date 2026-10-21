@@ -98,11 +98,13 @@
     <div>
       <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
       <!-- Gunakan class "date-group" sebagai pembungkus -->
-      <div id="date-group" class="flex flex-wrap gap-2">
-        <button onclick="selectDate(this)" class="date-btn bg-[#e8f3ee] border border-[#12372a] text-[#12372a] font-bold text-xs px-4 py-2 rounded-full transition">Hari Ini, 22 Okt</button>
-        <button onclick="selectDate(this)" class="date-btn bg-gray-50 border border-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full hover:bg-gray-100 transition">Besok, 23 Okt</button>
-        <button onclick="selectDate(this)" class="date-btn bg-gray-50 border border-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full hover:bg-gray-100 transition">Kamis, 24 Okt</button>
-        <button onclick="selectDate(this)" class="date-btn bg-gray-50 border border-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full hover:bg-gray-100 transition">Jumat, 25 Okt</button>
+      <div>
+      <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
+      <div id="date-container" class="flex flex-wrap gap-2">
+        <button type="button" class="date-btn active-date px-4 py-2 rounded-full text-xs transition">Hari Ini, 22 Okt</button>
+        <button type="button" class="date-btn inactive-date px-4 py-2 rounded-full text-xs transition">Besok, 23 Okt</button>
+        <button type="button" class="date-btn inactive-date px-4 py-2 rounded-full text-xs transition">Kamis, 24 Okt</button>
+        <button type="button" class="date-btn inactive-date px-4 py-2 rounded-full text-xs transition">Jumat, 25 Okt</button>
       </div>
     </div>
 
@@ -146,4 +148,5 @@
       <a href="#" class="hover:underline">Bantuan</a>
     </div>
   </footer>
+  <script src="../assets/js/app.js" ></script>
 </html>
