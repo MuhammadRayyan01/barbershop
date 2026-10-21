@@ -1,4 +1,26 @@
+// service 
 
+  function selectService(element) {
+    // 1. Ambil semua elemen opsi layanan
+    const allServices = document.querySelectorAll('.service-option');
+    
+    // 2. Reset semua kartu ke tampilan biasa (border border-gray-200)
+    allServices.forEach(card => {
+      card.className = "service-option bg-white p-6 rounded-2xl border border-gray-200 hover:border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200";
+    });
+
+    // 3. Berikan border tebal hijau pada kartu yang baru saja diklik
+    element.className = "service-option bg-white p-6 rounded-2xl border-2 border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200";
+
+    // 4. Ambil data layanan yang dipilih
+    const serviceName = element.getAttribute('data-name');
+    const servicePrice = element.getAttribute('data-price');
+
+    console.log("Layanan Terpilih:", serviceName, servicePrice);
+  }
+
+
+// date and time 
   // 1. Definisikan Style Tailwind untuk status Aktif dan Tidak Aktif
   const DATE_ACTIVE = "bg-[#e8f3ee] border border-[#12372a] text-[#12372a] font-bold";
   const DATE_INACTIVE = "bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100";

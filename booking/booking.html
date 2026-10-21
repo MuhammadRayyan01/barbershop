@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
-            font-family: 'Arial', sans-serif; /* Change 'Arial' to your desired font */
+            font-family: 'Arial', sans-serif;
         }
     </style>
     <title>Pemon Barbershop</title>
 
     <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
 
@@ -25,18 +25,14 @@
         <ul>
             <li>
                 <a href="../dashboard/index.html" class="text-gray-600 hover:text-black">Dashboard</a>
-           
-           
                 <a href="../dashboard/schedule.html" class="text-gray-600 hover:text-black">Schedule</a>
-          
-           
                 <a href="../dashboard/aboutUs.html" class="text-gray-600 hover:text-black">About us</a>
             </li>
-           
         </ul>
     </nav>
-    </header>
-<main class="max-w-6xl w-full mx-auto my-6 space-y-6">
+  </header>
+
+  <main class="max-w-6xl w-full mx-auto my-6 space-y-6">
 
     <!-- Stepper / Indikator Langkah -->
     <div class="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium px-2">
@@ -49,104 +45,100 @@
       <span><strong class="text-gray-400">4</strong> Selesai</span>
     </div>
 
-    <div class="lg:col-span-4 space-y-4">
-        
+    <div class="space-y-4">
         <div class="flex justify-between items-center px-1">
           <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500">Detail Reservasi</h2>
           <span class="text-xs font-bold text-gray-400 tracking-wider">LANGKAH 2/4</span>
-    </div>
+        </div>
 
-<!-- Kartu 1: Kondisi Terpilih (Active State) -->
-<button type="button" class="card-option border border-gray-200 bg-white rounded-xl p-4 text-left shadow-sm relative cursor-pointer w-full transition hover:border-gray-300" onclick="selectCard(this)">
-  <!-- Icon Centang -->
-  
-  <h3 class="font-bold text-[#0d3b36] text-sm">Classic Haircut</h3>
-  <div class="flex gap-2 text-[11px] text-gray-500 my-2">
-    <span>30 Menit</span>
-    <span>•</span>
-    <span>Grooming Dasar</span>
-  </div>
-  <p class="text-xs text-gray-500 leading-relaxed">
-    Potong rambut presisi, cuci rambut ringan, styling pomade.
-  </p>
-  <div class="mt-4 pt-2 flex justify-between items-center text-xs">
-    <span class="text-gray-400 text-[11px]">Biaya Reservasi</span>
-    <span class="font-bold text-[#0d3b36]">Rp 50.000</span>
-  </div>
-</button>
+        <div class="max-w-4xl mx-auto space-y-4">
+          
+          <!-- KARTU 1 -->
+          <div onclick="selectService(this)" 
+               data-name="Classic Haircut" 
+               data-price="Rp 50.000"
+               class="service-option bg-white p-6 rounded-2xl border-2 border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-base font-bold text-[#0d3b36]">Classic Haircut</h3>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">30 Menit &bull; Grooming Dasar</p>
+            <p class="text-xs text-gray-600 mb-6">Potong rambut presisi, cuci rambut ringan, styling pomade.</p>
+            
+            <div class="flex justify-between items-center text-xs pt-2">
+              <span class="text-gray-400">Biaya Reservasi</span>
+              <span class="font-bold text-sm text-[#0d3b36]">Rp 50.000</span>
+            </div>
+          </div>
 
-<!-- Kartu 2: Kondisi Belum Terpilih -->
-<button type="button" class="card-option border border-gray-200 bg-white rounded-xl p-4 text-left shadow-sm relative cursor-pointer w-full transition hover:border-gray-300" onclick="selectCard(this)">
-  <!-- Icon Centang (Awalnya tersembunyi dengan class 'hidden') -->
-  
-  <h3 class="font-bold text-[#0d3b36] text-sm">Haircut & Wash Deluxe</h3>
-  <div class="flex gap-2 text-[11px] text-gray-500 my-2">
-    <span>45 Menit</span>
-    <span>•</span>
-    <span>Paling Favorit</span>
-  </div>
-  <p class="text-xs text-gray-500 leading-relaxed">
-    Potong rambut, keramas menthol segar, dan pijat relaksasi kepala.
-  </p>
-  <div class="mt-4 pt-2 flex justify-between items-center text-xs">
-    <span class="text-gray-400 text-[11px]">Biaya Reservasi</span>
-    <span class="font-bold text-[#0d3b36]">Rp 65.000</span>
-  </div>
-</button>
+          <!-- KARTU 2 -->
+          <div onclick="selectService(this)" 
+               data-name="Haircut & Wash Deluxe" 
+               data-price="Rp 65.000"
+               class="service-option bg-white p-6 rounded-2xl border border-gray-200 hover:border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-base font-bold text-[#0d3b36]">Haircut & Wash Deluxe</h3>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">45 Menit &bull; Paling Favorit</p>
+            <p class="text-xs text-gray-600 mb-6">Potong rambut, keramas menthol segar, dan pijat relaksasi kepala.</p>
+            
+            <div class="flex justify-between items-center text-xs pt-2">
+              <span class="text-gray-400">Biaya Reservasi</span>
+              <span class="font-bold text-sm text-[#0d3b36]">Rp 65.000</span>
+            </div>
+          </div>
 
-<!-- 1. BAGIAN TANGGAL (Pills Button) -->
-    <div>
-      <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
-      <!-- Gunakan class "date-group" sebagai pembungkus -->
-      <div>
-      <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
-      <div id="date-container" class="flex flex-wrap gap-2">
-        <button type="button" class="date-btn active-date px-4 py-2 rounded-full text-xs transition">Hari Ini, 22 Okt</button>
-        <button type="button" class="date-btn inactive-date px-4 py-2 rounded-full text-xs transition">Besok, 23 Okt</button>
-        <button type="button" class="date-btn inactive-date px-4 py-2 rounded-full text-xs transition">Kamis, 24 Okt</button>
-        <button type="button" class="date-btn inactive-date px-4 py-2 rounded-full text-xs transition">Jumat, 25 Okt</button>
-      </div>
-    </div>
+        </div>
 
-    <!-- 2. BAGIAN SLOT WAKTU (Time Button) -->
-    <div>
-      <div class="flex justify-between items-center mb-2">
-        <label class="text-xs font-bold text-[#12372a]">Slot Waktu Tersedia</label>
-        <span class="text-[11px] text-gray-400">Zona Waktu WIB</span>
-      </div>
-      <!-- Gunakan class "time-group" sebagai pembungkus -->
-      <div id="time-group" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">10:00</button>
-        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">11:00</button>
-        <button onclick="selectTime(this)" class="time-btn bg-[#12372a] text-white font-bold py-2 rounded-lg text-xs transition">13:00</button>
-        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">15:30</button>
-        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">17:00</button>
-        <button onclick="selectTime(this)" class="time-btn border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">19:00</button>
-      </div>
-    </div>
-    <!-- Tombol Aksi Bawah -->
+        <!-- BAGIAN TANGGAL (Ditambahkan onclick="selectDate(this)") -->
+        <div>
+          <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
+          <div id="date-container" class="flex flex-wrap gap-2">
+            <button type="button" onclick="selectDate(this)" class="date-btn bg-[#e8f3ee] border border-[#12372a] text-[#12372a] font-bold px-4 py-2 rounded-full text-xs transition">Hari Ini, 22 Okt</button>
+            <button type="button" onclick="selectDate(this)" class="date-btn bg-white border border-gray-200 text-gray-600 hover:border-[#12372a] px-4 py-2 rounded-full text-xs transition">Besok, 23 Okt</button>
+            <button type="button" onclick="selectDate(this)" class="date-btn bg-white border border-gray-200 text-gray-600 hover:border-[#12372a] px-4 py-2 rounded-full text-xs transition">Kamis, 24 Okt</button>
+            <button type="button" onclick="selectDate(this)" class="date-btn bg-white border border-gray-200 text-gray-600 hover:border-[#12372a] px-4 py-2 rounded-full text-xs transition">Jumat, 25 Okt</button>
+          </div>
+        </div>
+
+        <!-- BAGIAN SLOT WAKTU -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label class="text-xs font-bold text-[#12372a]">Slot Waktu Tersedia</label>
+            <span class="text-[11px] text-gray-400">Zona Waktu WIB</span>
+          </div>
+          <div id="time-group" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">10:00</button>
+            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">11:00</button>
+            <button type="button" onclick="selectTime(this)" class="time-btn bg-[#12372a] text-white font-bold py-2 rounded-lg text-xs transition">13:00</button>
+            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">15:30</button>
+            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">17:00</button>
+            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">19:00</button>
+          </div>
+        </div>
+
+        <!-- Tombol Aksi Bawah -->
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
           <span class="text-xs text-gray-500 flex items-center gap-1">
              Konfirmasi instan tanpa biaya admin
           </span>
           <div class="flex gap-3 w-full sm:w-auto">
-            <a href="../dashboard/index.html"> &larr; Kembali </a>             
-
-            <a href="../booking/confirmation.html"> Lanjut ke Data Diri &rarr;</a>             
+            <a href="../dashboard/index.html" class="px-4 py-2 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 text-center">&larr; Kembali</a>             
+            <a href="../booking/confirmation.html" class="px-5 py-2 bg-[#0d3b36] text-white rounded-xl text-xs font-bold hover:bg-[#082724] text-center">Lanjut ke Data Diri &rarr;</a>             
           </div>
         </div>
 
-      </section>
-
     </div>
   </main>
-</body>
- <footer class="max-w-6xl w-full mx-auto text-[11px] text-gray-400 flex flex-col md:flex-row justify-between items-center py-6 border-t border-gray-200/60 mt-8 gap-2">
+
+  <footer class="max-w-6xl w-full mx-auto text-[11px] text-gray-400 flex flex-col md:flex-row justify-between items-center py-6 border-t border-gray-200/60 mt-8 gap-2">
     <p>© 2025 Pemon Barbershop. All rights reserved.</p>
     <div class="flex gap-4">
       <a href="#" class="hover:underline">Syarat & Ketentuan</a>
       <a href="#" class="hover:underline">Bantuan</a>
     </div>
   </footer>
-  <script src="../assets/js/app.js" ></script>
+
+  <!-- File JavaScript Eksternal -->
+  <script src="../assets/js/app.js"></script>
+</body>
 </html>
