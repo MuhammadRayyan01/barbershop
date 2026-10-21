@@ -86,32 +86,32 @@
         </p>
       </div>
 <!-- 3. Metode Pembayaran -->
-      <div class="space-y-2">
-        <div class="flex justify-between items-center text-xs">
-          <label class="font-bold text-gray-700">Metode Pembayaran</label>
-          <span class="text-gray-500 text-[11px]">Barber: <strong class="text-[#12372a]">Siapa Saja (Tersedia Tercepat)</strong></span>
-        </div>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <!-- Opsi 1 (Terpilih) -->
-          <div class="border-2 border-[#12372a] bg-[#fcfdfe] p-3.5 rounded-xl flex items-start gap-3 cursor-pointer">
-            <input type="radio" name="payment" checked class="mt-0.5 accent-[#12372a]">
-            <div>
-              <p class="text-xs font-bold text-[#12372a]">Bayar di Kasir Studio</p>
-              <p class="text-[11px] text-gray-500 mt-0.5">Tunai, Kartu Debit, atau QRIS saat datang</p>
-            </div>
-          </div>
-          <!-- Opsi 2 -->
-          <div class="border border-gray-200 hover:border-gray-300 p-3.5 rounded-xl flex items-start gap-3 cursor-pointer">
-            <input type="radio" name="payment" class="mt-0.5 accent-[#12372a]">
-            <div>
-              <p class="text-xs font-bold text-gray-700">QRIS / Instant Payment</p>
-              <p class="text-[11px] text-gray-500 mt-0.5">BCA, GoPay, ShopeePay, OVO</p>
-            </div>
-          </div>
-        </div>
+<div class="space-y-2">
+  <div class="flex justify-between items-center text-xs">
+    <label class="font-bold text-gray-700">Metode Pembayaran</label>
+    <span class="text-gray-500 text-[11px]">Barber: <strong class="text-[#12372a]">Siapa Saja (Tersedia Tercepat)</strong></span>
+  </div>
+  
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <!-- Opsi 1 (Terpilih) -->
+    <div onclick="selectPayment(this)" class="payment-card border-2 border-[#12372a] bg-[#fcfdfe] p-3.5 rounded-xl flex items-start gap-3 cursor-pointer transition-all">
+      <input type="radio" name="payment" checked class="mt-0.5 accent-[#12372a]">
+      <div>
+        <p class="text-xs font-bold text-[#12372a]">Bayar di Kasir Studio</p>
+        <p class="text-[11px] text-gray-500 mt-0.5">Tunai, Kartu Debit, atau QRIS saat datang</p>
       </div>
-<!-- 4. Catatan Khusus Potongan Rambut -->
+    </div>
+    
+    <!-- Opsi 2 -->
+    <div onclick="selectPayment(this)" class="payment-card border border-gray-200 hover:border-gray-300 bg-white p-3.5 rounded-xl flex items-start gap-3 cursor-pointer transition-all">
+      <input type="radio" name="payment" class="mt-0.5 accent-[#12372a]">
+      <div>
+        <p class="text-xs font-bold text-gray-700">QRIS / Instant Payment</p>
+        <p class="text-[11px] text-gray-500 mt-0.5">BCA, GoPay, ShopeePay, OVO</p>
+      </div>
+    </div>
+  </div>
+</div><!-- 4. Catatan Khusus Potongan Rambut -->
       <div class="space-y-1.5">
         <div class="flex justify-between items-center text-xs">
           <label class="font-bold text-gray-700">Catatan Khusus Potongan Rambut <span class="text-gray-400 font-normal">(Opsional)</span></label>
@@ -161,6 +161,7 @@
       <a href="#" class="hover:underline">Bantuan</a>
     </div>
   </footer>
+  <script src="../assets/js/app.js"></script>
 
 </body>
 </html>

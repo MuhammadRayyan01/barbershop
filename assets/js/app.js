@@ -82,3 +82,32 @@
     // (Opsional) Log data ke console untuk melihat variabel terupdate
     console.log("Jadwal Terpilih:", selectedSchedule);
   }
+
+
+  // choosing payment method
+  // Fungsi untuk Memilih Metode Pembayaran di Halaman 3
+function selectPayment(element) {
+  const allPaymentCards = document.querySelectorAll('.payment-card');
+  
+  // 1. Reset semua kartu pembayaran ke status tidak aktif (border biasa)
+  allPaymentCards.forEach(card => {
+    card.className = "payment-card border border-gray-200 hover:border-gray-300 bg-white p-3.5 rounded-xl flex items-start gap-3 cursor-pointer transition-all";
+    
+    // Matikan centang radio button pada kartu lain
+    const radio = card.querySelector('input[type="radio"]');
+    if (radio) {
+      radio.checked = false;
+    }
+  });
+
+  // 2. Aktifkan kartu pembayaran yang sedang diklik (border tebal & latar hijau muda)
+  element.className = "payment-card border-2 border-[#12372a] bg-[#fcfdfe] p-3.5 rounded-xl flex items-start gap-3 cursor-pointer transition-all";
+  
+  // Berikan centang pada radio button di kartu yang diklik
+  const activeRadio = element.querySelector('input[type="radio"]');
+  if (activeRadio) {
+    activeRadio.checked = true;
+  }
+
+  console.log("Metode pembayaran dipilih");
+}
