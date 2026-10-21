@@ -59,32 +59,38 @@
     <!-- Kotak Form Utama -->
     <div class="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200/80 shadow-sm space-y-6">
 
-      <!-- 1. Input Nama Lengkap -->
-      <div class="space-y-1.5">
-        <div class="flex justify-between items-center text-xs">
-          <label class="font-bold text-gray-700">Nama Lengkap Pemesan</label>
-          <span class="text-gray-400 text-[11px]">Wajib diisi</span>
-        </div>
-        <div class="relative flex items-center">
-          <input type="text" value="Raffy Kurnia" class="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-[#12372a] focus:outline-none focus:border-[#12372a]">
-          <span class="absolute right-3.5 text-xs text-green-600 font-bold">✔</span>
-        </div>
-      </div>
+<!-- Kotak Form Utama -->
+<div class="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200/80 shadow-sm space-y-6">
+
+ <!-- 1. Input Nama Lengkap -->
+<div class="space-y-1.5">
+  <div class="flex justify-between items-center text-xs">
+    <label class="font-bold text-gray-700">Nama Lengkap Pemesan</label>
+    <span class="text-gray-400 text-[11px]">Wajib diisi</span>
+  </div>
+  <div class="relative flex items-center">
+    <input type="text" id="nama-input" placeholder="Masukkan nama lengkap" oninput="validateName()" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-[#12372a] focus:outline-none focus:border-[#12372a]">
+    <!-- Ditambahkan kelas 'hidden' di awal -->
+    <span id="nama-check" class="absolute right-3.5 text-xs font-bold transition-all hidden">✔</span>
+  </div>
+</div>
+
 <!-- 2. Input Nomor WhatsApp -->
-      <div class="space-y-1.5">
-        <div class="flex justify-between items-center text-xs">
-          <label class="font-bold text-gray-700">Nomor WhatsApp / Telepon Aktif</label>
-          <span class="text-gray-400 text-[11px]">Untuk Pengiriman Barcode</span>
-        </div>
-        <div class="relative flex items-center">
-          <span class="absolute left-3.5 text-gray-400 text-xs font-semibold">ID +62</span>
-          <input type="text" value="812 8940 2190" class="w-full pl-20 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-[#12372a] focus:outline-none focus:border-[#12372a]">
-          <span class="absolute right-3.5 text-xs text-green-600 font-bold">✔</span>
-        </div>
-        <p class="text-[11px] text-gray-400 flex items-center gap-1 mt-1">
-           Tiket QR code dan pengingat reservasi H-1 jam dikirim melalui sistem WhatsApp resmi.
-        </p>
-      </div>
+<div class="space-y-1.5">
+  <div class="flex justify-between items-center text-xs">
+    <label class="font-bold text-gray-700">Nomor WhatsApp / Telepon Aktif</label>
+    <span class="text-gray-400 text-[11px]">Untuk Pengiriman Barcode</span>
+  </div>
+  <div class="relative flex items-center">
+    <span class="absolute left-3.5 text-gray-400 text-xs font-semibold">ID +62</span>
+    <input type="text" id="wa-input" placeholder="812 8940 2190" oninput="validatePhone()" class="w-full pl-20 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-[#12372a] focus:outline-none focus:border-[#12372a]">
+    <!-- Ditambahkan kelas 'hidden' di awal -->
+    <span id="wa-check" class="absolute right-3.5 text-xs font-bold transition-all hidden">✔</span>
+  </div>
+  <p class="text-[11px] text-gray-400 flex items-center gap-1 mt-1">
+    Tiket QR code dan pengingat reservasi H-1 jam dikirim melalui sistem WhatsApp resmi.
+  </p>
+</div>
 <!-- 3. Metode Pembayaran -->
 <div class="space-y-2">
   <div class="flex justify-between items-center text-xs">

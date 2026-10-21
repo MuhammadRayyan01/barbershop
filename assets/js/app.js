@@ -84,7 +84,37 @@
   }
 
 
-  // choosing payment method
+  // confirmation page
+  // input name and phone number
+  // Fungsi Validasi Nama Lengkap
+function validateName() {
+  const nameInput = document.getElementById('nama-input');
+  const nameCheck = document.getElementById('nama-check');
+  
+  // Jika kolom nama tidak kosong (setelah dikurangi spasi kosong)
+  if (nameInput.value.trim().length > 0) {
+    // Ubah centang menjadi warna hijau terang
+    nameCheck.className = "absolute right-3.5 text-xs text-green-600 font-bold transition-all";
+  } else {
+    // Kembalikan ke warna abu-abu redup jika kosong
+    nameCheck.className = "absolute right-3.5 text-xs text-gray-300 font-bold transition-all";
+  }
+}
+
+// Fungsi Validasi Nomor WhatsApp
+function validatePhone() {
+  const phoneInput = document.getElementById('wa-input');
+  const phoneCheck = document.getElementById('wa-check');
+  
+  // Contoh validasi sederhana: minimal panjang nomor 9 digit
+  if (phoneInput.value.trim().length >= 9) {
+    // Ubah centang menjadi warna hijau terang
+    phoneCheck.className = "absolute right-3.5 text-xs text-green-600 font-bold transition-all";
+  } else {
+    // Kembalikan ke abu-abu jika belum memenuhi syarat panjang karakter
+    phoneCheck.className = "absolute right-3.5 text-xs text-gray-300 font-bold transition-all";
+  }
+}
   // Fungsi untuk Memilih Metode Pembayaran di Halaman 3
 function selectPayment(element) {
   const allPaymentCards = document.querySelectorAll('.payment-card');
