@@ -19,10 +19,13 @@ create table if not exists admin(
         updated_at timestamp default current_timestamp not null
 );
 
+create type service_status as enum('active','inactive');
 create table if not exists service(
         service_id serial primary key,
         service_name varchar(255) not null,
+        description text,
         price decimal (10, 2) not null,
+        status service_status default 'active'  not null,
         created_at timestamp default current_timestamp not null,
         updated_at timestamp default current_timestamp not null
 );
