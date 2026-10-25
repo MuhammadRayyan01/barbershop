@@ -35,7 +35,25 @@
            
         </ul>
     </nav>
-    </header>
+    <!-- Tombol Akun -->
+    <div class="relative">
+      <button id="akun-btn" class="flex items-center gap-2">
+        <span class="w-10 h-10 bg-[#0d3b36] text-white rounded-full flex items-center justify-center font-bold">R</span>
+        <span class="hidden sm:block text-sm font-medium">Akun</span>
+      </button>
+      <div id="akun-menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 z-40 text-sm">
+        <div class="p-4 border-b border-gray-100">
+          <p class="font-bold">Halo, <span id="akun-nama-depan"></span></p>
+          <p id="akun-nama" class="text-xs text-gray-500 mt-1"></p>
+          <p id="akun-hp" class="text-xs text-gray-500"></p>
+          <p id="akun-email" class="text-xs text-gray-500"></p>
+        </div>
+        <button id="akun-edit-btn" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Edit Profil</button>
+        <a href="../dashboard/schedule.html" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
+        <a href="../login.html" class="block px-4 py-2 text-red-600 hover:bg-red-50">Keluar</a>
+      </div>
+    </div>
+  </header>
 <!-- Container Utama -->
   <main class="max-w-3xl w-full mx-auto px-4 py-8">
     
@@ -167,6 +185,33 @@
       <a href="#" class="hover:underline">Bantuan</a>
     </div>
   </footer>
+  <!-- Pop-up Edit Profil -->
+  <div id="akun-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
+    <form id="akun-form" class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 text-[#0d3b36]">
+      <h2 class="text-lg font-bold">Edit Data Profil</h2>
+      <div>
+        <label class="text-sm font-semibold">Nama Lengkap</label>
+        <input id="akun-input-nama" type="text" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-sm font-semibold">Nomor Handphone / WhatsApp</label>
+        <input id="akun-input-hp" type="tel" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-sm font-semibold">Email</label>
+        <input id="akun-input-email" type="email" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-sm font-semibold">Password Baru <span class="font-normal text-gray-400">(opsional)</span></label>
+        <input id="akun-input-password" type="password" placeholder="Biarkan kosong jika tidak diubah" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <p id="akun-error" class="hidden text-sm text-red-600"></p>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="akun-batal" class="px-4 py-2 text-sm font-semibold">Batal</button>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-[#0d3b36] text-white text-sm font-semibold">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
   <script src="../../assets/js/app.js"></script>
 
 </body>
