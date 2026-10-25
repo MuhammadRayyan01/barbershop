@@ -58,7 +58,7 @@
   const timeButtons = document.querySelectorAll('.time-btn');
   timeButtons.forEach(button => {
     button.addEventListener('click', function() {
-      // Reset semua tombol jam ke status tidak aktif
+    // Reset semua tombol jam ke status tidak aktif
       timeButtons.forEach(btn => {
         btn.className = `time-btn ${TIME_INACTIVE} py-2 rounded-lg text-xs transition`;
       });
@@ -140,4 +140,93 @@ function selectPayment(element) {
   }
 
   console.log("Metode pembayaran dipilih");
+}
+
+// ============================================================
+// AKUN: tombol akun + pop-up edit profil (dipakai semua halaman user)
+// ============================================================
+
+// Data contoh. Nanti diganti data user yang sedang login dari PHP (tabel users).
+let akun = { nama: 'Raffy Kurnia', hp: '0812-3456-7890', email: 'raffy.kurnia@example.com' };
+
+const akunBtn   = document.getElementById('akun-btn');
+const akunMenu  = document.getElementById('akun-menu');
+const akunModal = document.getElementById('akun-modal');
+const akunForm  = document.getElementById('akun-form');
+
+// Tampilkan data akun di dropdown dan huruf awal di tombol
+function tampilkanAkun() {
+  document.getElementById('akun-nama-depan').innerText = akun.nama.split(' ')[0];
+  document.getElementById('akun-nama').innerText = akun.nama;
+  document.getElementById('akun-hp').innerText = akun.hp;
+  document.getElementById('akun-email').innerText = akun.email;
+  akunBtn.querySelector('span').innerText = akun.nama.charAt(0).toUpperCase();
+}
+
+function tutupModalAkun() {
+  akunModal.classList.add('hidden');
+  akunModal.classList.remove('flex');
+}
+
+// Semua kode di bawah hanya jalan kalau halaman punya tombol akun
+if (akunBtn) {
+  tampilkanAkun();
+
+  // Klik tombol akun -> buka / tutup dropdown
+  akunBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    akunMenu.classList.toggle('hidden');
+  });
+
+  // Klik di luar dropdown -> dropdown tertutup
+  document.addEventListener('click', function (e) {
+    if (!akunMenu.contains(e.target)) akunMenu.classList.add('hidden');
+  });
+
+  // Klik "Edit Profil" -> buka pop-up, isi dengan data sekarang
+  document.getElementById('akun-edit-btn').addEventListener('click', function () {
+    akunMenu.classList.add('hidden');
+    document.getElementById('akun-input-nama').value = akun.nama;
+    document.getElementById('akun-input-hp').value = akun.hp;
+    document.getElementById('akun-input-email').value = akun.email;
+    document.getElementById('akun-input-password').value = '';
+    document.getElementById('akun-error').classList.add('hidden');
+    akunModal.classList.remove('hidden');
+    akunModal.classList.add('flex');
+  });
+
+  // Tombol Batal / klik area gelap -> pop-up tertutup
+  document.getElementById('akun-batal').addEventListener('click', tutupModalAkun);
+  akunModal.addEventListener('click', function (e) {
+    if (e.target === akunModal) tutupModalAkun();
+  });
+
+  // Tombol Simpan Perubahan
+  akunForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const nama = document.getElementById('akun-input-nama').value.trim();
+    const hp = document.getElementById('akun-input-hp').value.trim();
+    const email = document.getElementById('akun-input-email').value.trim();
+    const password = document.getElementById('akun-input-password').value;
+    const error = document.getElementById('akun-error');
+
+    // Validasi sederhana
+    let pesan = '';
+    if (nama.length < 3) pesan = 'Nama lengkap minimal 3 karakter.';
+    else if (hp.replace(/\D/g, '').length < 9) pesan = 'Nomor handphone minimal 9 digit.';
+    else if (!email.includes('@') || !email.includes('.')) pesan = 'Format email belum benar.';
+    else if (password !== '' && password.length < 8) pesan = 'Password baru minimal 8 karakter, atau kosongkan.';
+
+    if (pesan !== '') {
+      error.innerText = pesan;
+      error.classList.remove('hidden');
+      return;
+    }
+
+    // PHP nanti: kirim data ini ke server (UPDATE users SET full_name, phone_number, email WHERE user_id)
+    // Password hanya diubah kalau kolom password baru diisi.
+    akun = { nama: nama, hp: hp, email: email };
+    tampilkanAkun();
+    tutupModalAkun();
+  });
 }
