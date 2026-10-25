@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar | Pemon Barbershop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f8fd; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 py-10">
+
+  <div class="bg-white rounded-[24px] shadow-sm w-full max-w-[420px] p-8 md:p-10 border-t-4 border-[#0d3b36]">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="w-12 h-12 bg-[#e6f4ea] rounded-xl flex items-center justify-center mx-auto mb-4 text-[#0d3b36]">
+        <span class="material-symbols-outlined text-xl">content_cut</span>
+      </div>
+      <h1 class="text-2xl font-extrabold text-slate-900 mb-2">Daftar Akun Baru</h1>
+      <p class="text-sm text-slate-500">Buat akun untuk reservasi lebih cepat dan kelola jadwal cukur Anda</p>
+    </div>
+
+    <!-- Form Daftar -->
+    <form action="#" method="POST" class="space-y-4">
+      <!-- Input Nama -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-2">Nama Lengkap</label>
+        <div class="relative flex items-center">
+          <input type="text" placeholder="misal: Raden Mas Danu" class="w-full bg-[#f8f8fd] text-sm rounded-xl py-3.5 pl-4 pr-11 outline-none focus:ring-2 focus:ring-[#0d3b36]/20 transition-all text-slate-700 placeholder-slate-400">
+          <span class="material-symbols-outlined absolute right-4 text-slate-400 text-[20px]">person</span>
+        </div>
+      </div>
+
+      <!-- Input HP -->
+      <div>
+        <div class="flex justify-between items-end mb-2">
+          <label class="block text-sm font-semibold text-slate-900">Nomor Handphone (WhatsApp)</label>
+          <span class="text-[11px] text-slate-400">Untuk konfirmasi jadwal</span>
+        </div>
+        <div class="relative flex items-center">
+          <input type="tel" placeholder="08xxxxxxxxxx" class="w-full bg-[#f8f8fd] text-sm rounded-xl py-3.5 pl-4 pr-11 outline-none focus:ring-2 focus:ring-[#0d3b36]/20 transition-all text-slate-700 placeholder-slate-400">
+          <span class="material-symbols-outlined absolute right-4 text-slate-400 text-[20px]">chat</span>
+        </div>
+      </div>
+
+      <!-- Input Email -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-2">Email</label>
+        <div class="relative flex items-center">
+          <input type="email" placeholder="nama@domain.com" class="w-full bg-[#f8f8fd] text-sm rounded-xl py-3.5 pl-4 pr-11 outline-none focus:ring-2 focus:ring-[#0d3b36]/20 transition-all text-slate-700 placeholder-slate-400">
+          <span class="material-symbols-outlined absolute right-4 text-slate-400 text-[20px]">mail</span>
+        </div>
+      </div>
+
+      <!-- Input Password -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-2">Kata Sandi</label>
+        <div class="relative flex items-center">
+          <input type="password" id="reg-password" placeholder="Minimal 8 karakter" class="w-full bg-[#f8f8fd] text-sm rounded-xl py-3.5 pl-4 pr-11 outline-none focus:ring-2 focus:ring-[#0d3b36]/20 transition-all text-slate-700 placeholder-slate-400">
+          <button type="button" onclick="togglePassword('reg-password', 'reg-eye-1')" class="absolute right-4 text-slate-400 hover:text-slate-600 focus:outline-none flex items-center">
+            <span id="reg-eye-1" class="material-symbols-outlined text-[20px]">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-900 mb-2">Konfirmasi Kata Sandi</label>
+        <div class="relative flex items-center">
+          <input type="password" id="reg-password-confirm" placeholder="Ulangi kata sandi" class="w-full bg-[#f8f8fd] text-sm rounded-xl py-3.5 pl-4 pr-11 outline-none focus:ring-2 focus:ring-[#0d3b36]/20 transition-all text-slate-700 placeholder-slate-400">
+          <button type="button" onclick="togglePassword('reg-password-confirm', 'reg-eye-2')" class="absolute right-4 text-slate-400 hover:text-slate-600 focus:outline-none flex items-center">
+            <span id="reg-eye-2" class="material-symbols-outlined text-[20px]">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Terms & Button -->
+      <div class="pt-2">
+        <p class="text-[11px] text-center text-slate-500 mb-4 px-2 leading-relaxed">
+          Dengan mendaftar, Anda menyetujui Ketentuan Layanan dan Kebijakan Privasi Pemon Barbershop.
+        </p>
+        <button type="submit" class="w-full bg-[#0d3b36] hover:bg-[#0a2e2a] text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all">
+          Daftar Sekarang <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+      </div>
+    </form>
+
+    <!-- Footer Link -->
+    <div class="text-center mt-6 pt-6 border-t border-slate-100">
+      <p class="text-sm text-slate-600">
+        Sudah punya akun? <a href="login.html" class="font-bold text-slate-900 hover:text-[#0d3b36]">Masuk di sini</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function togglePassword(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.textContent = 'visibility_off'; // Menyesuaikan icon state terbuka
+      } else {
+        input.type = 'password';
+        icon.textContent = 'visibility';
+      }
+    }
+  </script>
+</body>
+</html>
