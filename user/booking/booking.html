@@ -69,21 +69,20 @@
           <span class="text-xs font-bold text-gray-400 tracking-wider">LANGKAH 2/4</span>
         </div>
 
-        <div class="max-w-4xl mx-auto space-y-4">
+        <div class="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           
           <!-- KARTU 1 -->
           <div onclick="selectService(this)" 
                data-name="Classic Haircut" 
                data-price="Rp 50.000"
-               class="service-option bg-white p-6 rounded-2xl border-2 border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200">
-            <div class="flex justify-between items-start mb-2">
-              <h3 class="text-base font-bold text-[#0d3b36]">Classic Haircut</h3>
+               class="service-option aspect-square overflow-hidden bg-white p-4 rounded-2xl border-2 border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200 flex flex-col justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-[#0d3b36] leading-tight">Classic Haircut</h3>
+              <p class="text-[11px] text-gray-500 mt-1">30 Menit &bull; Grooming Dasar</p>
+              <p class="text-[11px] text-gray-600 mt-2 hidden sm:line-clamp-3">Potong rambut presisi, cuci rambut ringan, styling pomade.</p>
             </div>
-            <p class="text-xs text-gray-500 mb-2">30 Menit &bull; Grooming Dasar</p>
-            <p class="text-xs text-gray-600 mb-6">Potong rambut presisi, cuci rambut ringan, styling pomade.</p>
-            
-            <div class="flex justify-between items-center text-xs pt-2">
-              <span class="text-gray-400">Biaya Reservasi</span>
+            <div>
+              <span class="block text-[10px] text-gray-400">Biaya Reservasi</span>
               <span class="font-bold text-sm text-[#0d3b36]">Rp 50.000</span>
             </div>
           </div>
@@ -92,15 +91,14 @@
           <div onclick="selectService(this)" 
                data-name="Haircut & Wash Deluxe" 
                data-price="Rp 65.000"
-               class="service-option bg-white p-6 rounded-2xl border border-gray-200 hover:border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200">
-            <div class="flex justify-between items-start mb-2">
-              <h3 class="text-base font-bold text-[#0d3b36]">Haircut & Wash Deluxe</h3>
+               class="service-option aspect-square overflow-hidden bg-white p-4 rounded-2xl border border-gray-200 hover:border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200 flex flex-col justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-[#0d3b36] leading-tight">Haircut & Wash Deluxe</h3>
+              <p class="text-[11px] text-gray-500 mt-1">45 Menit &bull; Paling Favorit</p>
+              <p class="text-[11px] text-gray-600 mt-2 hidden sm:line-clamp-3">Potong rambut, keramas menthol segar, dan pijat relaksasi kepala.</p>
             </div>
-            <p class="text-xs text-gray-500 mb-2">45 Menit &bull; Paling Favorit</p>
-            <p class="text-xs text-gray-600 mb-6">Potong rambut, keramas menthol segar, dan pijat relaksasi kepala.</p>
-            
-            <div class="flex justify-between items-center text-xs pt-2">
-              <span class="text-gray-400">Biaya Reservasi</span>
+            <div>
+              <span class="block text-[10px] text-gray-400">Biaya Reservasi</span>
               <span class="font-bold text-sm text-[#0d3b36]">Rp 65.000</span>
             </div>
           </div>

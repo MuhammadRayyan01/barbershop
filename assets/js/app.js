@@ -1,16 +1,19 @@
 // service 
 
   function selectService(element) {
+    // Class dasar kartu layanan (persegi: aspect-square). Dipakai di semua kartu.
+    const kartuDasar = "service-option aspect-square overflow-hidden bg-white p-4 rounded-2xl shadow-sm cursor-pointer transition-all duration-200 flex flex-col justify-between";
+
     // 1. Ambil semua elemen opsi layanan
     const allServices = document.querySelectorAll('.service-option');
     
     // 2. Reset semua kartu ke tampilan biasa (border border-gray-200)
     allServices.forEach(card => {
-      card.className = "service-option bg-white p-6 rounded-2xl border border-gray-200 hover:border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200";
+      card.className = kartuDasar + " border border-gray-200 hover:border-[#0d3b36]";
     });
 
     // 3. Berikan border tebal hijau pada kartu yang baru saja diklik
-    element.className = "service-option bg-white p-6 rounded-2xl border-2 border-[#0d3b36] shadow-sm cursor-pointer transition-all duration-200";
+    element.className = kartuDasar + " border-2 border-[#0d3b36]";
 
     // 4. Ambil data layanan yang dipilih
     const serviceName = element.getAttribute('data-name');
