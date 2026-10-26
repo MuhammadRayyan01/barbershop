@@ -165,14 +165,56 @@ function initAdminShell(active, crumbs) {
         <span class="material-symbols-outlined text-[18px] text-slate-500">storefront</span>
         <div class="flex items-center gap-1.5">${trail}</div>
       </div>
-      <div class="w-9 h-9 rounded-full bg-[#0d3b36] text-white flex items-center justify-center">
-        <span class="material-symbols-outlined text-[18px]">person</span>
+      
+      <!-- Modifikasi Tombol Akun & Dropdown Dimulai dari Sini -->
+      <div class="relative">
+        <button id="admin-account-btn" class="flex items-center gap-2 hover:bg-slate-50 p-1.5 rounded-xl transition-colors focus:outline-none">
+          <div class="w-9 h-9 rounded-full bg-[#0d3b36] text-white flex items-center justify-center font-bold">
+            A
+          </div>
+          <span class="text-sm font-semibold text-slate-700 hidden sm:block">Akun</span>
+        </button>
+
+        <div id="admin-account-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50 text-sm">
+          <div class="px-4 py-3 border-b border-slate-100">
+            <p class="font-bold text-slate-900">Halo, Admin</p>
+            <p class="text-xs text-slate-500 mt-1">Administrator</p>
+            <p class="text-xs text-slate-500">admin@barbershop.com</p>
+          </div>
+          <div class="py-1">
+            <a href="profile.html" class="block px-4 py-2.5 text-slate-700 hover:bg-slate-50 font-medium">Edit Profil</a>
+          </div>
+          <div class="border-t border-slate-100 py-1">
+            <a href="login.html" class="block px-4 py-2.5 text-red-600 hover:bg-red-50 font-medium">Keluar</a>
+          </div>
+        </div>
       </div>
+      <!-- Akhir Modifikasi Tombol Akun -->
+
     </header>`;
 
+  // Logika toggle sidebar
   document.getElementById('sidebar-toggle').addEventListener('click', () => {
     const p = document.getElementById('sidebar-panel');
     p.classList.toggle('hidden');
     p.classList.toggle('flex');
   });
+
+  // Logika interaksi dropdown akun
+  const accBtn = document.getElementById('admin-account-btn');
+  const accMenu = document.getElementById('admin-account-menu');
+
+  if (accBtn && accMenu) {
+    accBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      accMenu.classList.toggle('hidden');
+    });
+
+    // Menutup dropdown saat area di luar diklik
+    document.addEventListener('click', (e) => {
+      if (!accBtn.contains(e.target) && !accMenu.contains(e.target)) {
+        accMenu.classList.add('hidden');
+      }
+    });
+  }
 }
