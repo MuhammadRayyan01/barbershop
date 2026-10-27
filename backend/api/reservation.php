@@ -42,7 +42,7 @@ if($method === 'GET'){
 require_once __DIR__ . '/../config/request.php';
 require_once __DIR__ . '/../config/csrf.php';
 
-requiredValidToken();
+requireValidCsrfToken();
 
 $data = readJsonResponse();
 
