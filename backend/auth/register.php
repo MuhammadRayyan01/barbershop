@@ -35,7 +35,7 @@ if(!is_array($data)){
     respond(400, ['success' => false, 'message' => 'Invalid request body']);
 }
 
-$uername = trim($data['username'] ?? '');
+$username = trim($data['username'] ?? '');
 $email = trim($data['email'] ?? '');
 $fullName = trim($data['full_name'] ?? '');
 $phoneNumber = trim($data['phone_number'] ?? '');
@@ -57,7 +57,7 @@ if (
     $phoneNumber === '' ||
     $password === ''
 ){
-    respond(422, ['sussess' => false, 'message' => "all fields must require to fill"]);
+    respond(422, ['success' => false, 'message' => "all fields must require to fill"]);
 }
 
 if (
@@ -69,7 +69,7 @@ if (
     respond(422, ['success' => false, 'message' => 'one or more fields exceeds the allwed limit']);
 }
 
-if (filter_var($email, FILTER_VALIDATE_EMAIL)){
+if (filter_var($email, FILTER_VALIDATE_EMAIL) === false){
     respond(422, ['success' => false, 'message' => 'Enter a valid email address.']);
 }
 
@@ -92,7 +92,7 @@ try{
         'insert into users (username,email, password_hash, full_name, phone_number)
         values
         (:username, :email, :password_hash, :full_name, :phone_number)
-        returning user_id, username, email, fullname, phone_number, created_at'
+        returning user_id, username, email, full_name, phone_number, created_at'
     );
     $insert->execute([
         'username' => $username,
@@ -109,7 +109,7 @@ try{
     $_SESSION['user_id'] =(int) $user['user_id'];
     $_SESSION['username'] = $user['username'];
 
-    respond(201, ['seccess' => true, 'message' => 'Registration seccessful.', 'data' => $user]);
+    respond(201, ['success' => true, 'message' => 'Registration successfull.', 'data' => $user]);
 }catch(PDOException $e){
     error_log('Registration API database error : ' . $e->getMessage());
     
