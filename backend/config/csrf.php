@@ -11,7 +11,7 @@ function getCsrfToken(): string {
     return $_SESSION['csrf_token'];
 }
 
-function requiredValidToken(): void{
+function requireValidCsrfToken(): void{
     $submittedToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     $sessionToken = $_SESSION['csrf_token'] ?? '';
 
