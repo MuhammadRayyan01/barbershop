@@ -105,15 +105,11 @@
 
         </div>
 
-        <!-- BAGIAN TANGGAL (Ditambahkan onclick="selectDate(this)") -->
+        <!-- Tanggal dipilih dari kalender; label tanggal dibuat dari waktu lokal browser. -->
         <div>
           <label class="block text-xs font-bold text-[#12372a] mb-2">Tanggal Reservasi</label>
-          <div id="date-container" class="flex flex-wrap gap-2">
-            <button type="button" onclick="selectDate(this)" class="date-btn bg-[#e8f3ee] border border-[#12372a] text-[#12372a] font-bold px-4 py-2 rounded-full text-xs transition">Hari Ini, 22 Okt</button>
-            <button type="button" onclick="selectDate(this)" class="date-btn bg-white border border-gray-200 text-gray-600 hover:border-[#12372a] px-4 py-2 rounded-full text-xs transition">Besok, 23 Okt</button>
-            <button type="button" onclick="selectDate(this)" class="date-btn bg-white border border-gray-200 text-gray-600 hover:border-[#12372a] px-4 py-2 rounded-full text-xs transition">Kamis, 24 Okt</button>
-            <button type="button" onclick="selectDate(this)" class="date-btn bg-white border border-gray-200 text-gray-600 hover:border-[#12372a] px-4 py-2 rounded-full text-xs transition">Jumat, 25 Okt</button>
-          </div>
+          <input id="booking-date" type="date" class="w-full sm:w-auto bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm focus:outline-none focus:border-[#12372a]">
+          <p class="text-[11px] text-gray-500 mt-2">Pilih tanggal untuk melihat ketersediaan. Jam operasional 10.00–22.00, dengan interval 30 menit.</p>
         </div>
 
         <!-- BAGIAN SLOT WAKTU -->
@@ -122,13 +118,8 @@
             <label class="text-xs font-bold text-[#12372a]">Slot Waktu Tersedia</label>
             <span class="text-[11px] text-gray-400">Zona Waktu WIB</span>
           </div>
-          <div id="time-group" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">10:00</button>
-            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">11:00</button>
-            <button type="button" onclick="selectTime(this)" class="time-btn bg-[#12372a] text-white font-bold py-2 rounded-lg text-xs transition">13:00</button>
-            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">15:30</button>
-            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">17:00</button>
-            <button type="button" onclick="selectTime(this)" class="time-btn bg-white border border-gray-200 py-2 rounded-lg text-xs font-medium text-gray-600 hover:border-[#12372a] transition">19:00</button>
+          <div id="time-group" class="grid grid-cols-3 sm:grid-cols-6 gap-2" aria-live="polite">
+            <p id="slot-message" class="col-span-full text-xs text-gray-500">Memuat ketersediaan jadwal…</p>
           </div>
         </div>
 
@@ -139,7 +130,7 @@
           </span>
           <div class="flex gap-3 w-full sm:w-auto">
             <a href="../dashboard/index.html" class="px-4 py-2 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 text-center">&larr; Kembali</a>             
-            <a href="../booking/confirmation.html" class="px-5 py-2 bg-[#0d3b36] text-white rounded-xl text-xs font-bold hover:bg-[#082724] text-center">Lanjut ke Data Diri &rarr;</a>             
+            <a id="continue-booking" href="../booking/confirmation.html" aria-disabled="true" class="px-5 py-2 bg-gray-400 text-white rounded-xl text-xs font-bold text-center pointer-events-none">Lanjut ke Data Diri &rarr;</a>
           </div>
         </div>
 
@@ -183,5 +174,6 @@
     </form>
   </div>
   <script src="../../assets/js/app.js"></script>
+  <script src="../../assets/js/booking-availability.js"></script>
 </body>
 </html>
