@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../backend/middleware/require_admin_page.php'; ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
