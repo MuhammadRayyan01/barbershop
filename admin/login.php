@@ -1,3 +1,17 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../backend/config/session.php';
+if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
+    require_once __DIR__ . '/../backend/config/db.php';
+    $stmt = $pdo->prepare('SELECT 1 FROM admin WHERE admin_id = :admin_id');
+    $stmt->execute(['admin_id' => $_SESSION['admin_id']]);
+    if ($stmt->fetchColumn()) {
+        header('Location: dashboard.php');
+        exit;
+    }
+    unset($_SESSION['admin_id'], $_SESSION['admin_name']);
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -69,8 +83,7 @@
       e.currentTarget.querySelector('span').textContent = show ? 'visibility_off' : 'visibility';
     });
 
-    // validasi sederhana, lalu masuk ke dashboard.
-    // PHP nanti: submit ke includes/admin_login.php -> cek tabel `admin` (username + password_hash)
+    // Autentikasi akun admin dan buat sesi server sebelum membuka dashboard.
     document.getElementById('login-form').addEventListener('submit', e => {
       e.preventDefault();
       const err = document.getElementById('login-error');
@@ -80,7 +93,24 @@
         err.classList.remove('hidden');
         return;
       }
-      window.location.href = 'dashboard.html';
+      const submit = e.currentTarget.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      submit.textContent = 'Memeriksa…';
+      fetch('../backend/auth/admin_login.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ login: user, password: pass.value })
+      }).then(async response => {
+        const payload = await response.json();
+        if (!response.ok || !payload.success) throw new Error(payload.message || 'Login admin gagal.');
+        window.location.href = 'dashboard.php';
+      }).catch(error => {
+        err.textContent = error.message || 'Tidak dapat terhubung ke server.';
+        err.classList.remove('hidden');
+        submit.disabled = false;
+        submit.textContent = 'Masuk';
+      });
     });
   </script>
 </body>
