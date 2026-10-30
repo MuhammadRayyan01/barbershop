@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../backend/middleware/require_admin_page.php'; ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -53,7 +54,7 @@
       <p id="f-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2"></p>
 
       <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <a href="services.html" class="px-5 py-2.5 mt-4 rounded-xl bg-slate-100 text-sm font-semibold text-slate-600 hover:bg-slate-200">Batal</a>
+        <a href="services.php" class="px-5 py-2.5 mt-4 rounded-xl bg-slate-100 text-sm font-semibold text-slate-600 hover:bg-slate-200">Batal</a>
         <button type="submit" class="px-5 py-2.5 mt-4 rounded-xl bg-[#0d3b36] hover:bg-[#082724] text-white text-sm font-bold">Simpan Layanan</button>
       </div>
     </form>
@@ -77,7 +78,7 @@
         return;
       }
       toast('Layanan tersimpan');
-      setTimeout(() => { window.location.href = 'services.html'; }, 700);
+      setTimeout(() => { window.location.href = 'services.php'; }, 700);
     });
   </script>
 </body>
