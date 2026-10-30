@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../backend/middleware/require_admin_page.php'; ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -20,7 +21,7 @@
         <h1 class="text-2xl sm:text-3xl font-extrabold">Kelola &amp; Perbarui Layanan</h1>
         <p class="text-sm text-slate-500 mt-1">Atur tarif, durasi, dan spesifikasi paket pemotongan rambut untuk ritel kasir serta reservasi daring.</p>
       </div>
-      <a href="add-service.html" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0d3b36] hover:bg-[#082724] text-white text-sm font-bold">
+      <a href="add-service.php" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0d3b36] hover:bg-[#082724] text-white text-sm font-bold">
         <span class="material-symbols-outlined text-[18px]">add</span>Tambah Layanan Baru
       </a>
     </div>
