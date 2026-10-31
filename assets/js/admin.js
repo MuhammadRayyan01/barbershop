@@ -7,11 +7,12 @@
    ========================================================= */
 
 const ADMIN_NAV = [
-  { key: 'dashboard',   label: 'Dashboard',   icon: 'dashboard',       href: 'dashboard.html' },
-  { key: 'reservations', label: 'Reservations', icon: 'calendar_month', href: 'dashboard.html' },
-  { key: 'services',    label: 'Services',    icon: 'content_cut',     href: 'services.html' },
-  { key: 'add-service', label: 'Add Service', icon: 'add_circle',      href: 'add-service.html' },
-  { key: 'refunds',     label: 'Refunds',     icon: 'currency_exchange', href: 'refunds.html' },
+  { key: 'dashboard',   label: 'Dashboard',   icon: 'dashboard',       href: 'dashboard.php' },
+  { key: 'reservations', label: 'Reservations', icon: 'calendar_month', href: 'dashboard.php' },
+  { key: 'services',    label: 'Services',    icon: 'content_cut',     href: 'services.php' },
+  { key: 'slots',       label: 'Time Slots',  icon: 'schedule',        href: 'time-slots.php' },
+  { key: 'add-service', label: 'Add Service', icon: 'add_circle',      href: 'add-service.php' },
+  { key: 'refunds',     label: 'Refunds',     icon: 'currency_exchange', href: 'refunds.php' },
 ];
 
 /* ---------- helper kecil ---------- */
@@ -115,7 +116,7 @@ const CHIP_STYLE = {
   red:    'bg-red-100 text-red-700',
   amber:  'bg-amber-100 text-amber-700',
   indigo: 'bg-indigo-100 text-indigo-700',
-  slate:  'bg-slate-100 text-slate-600',
+  slate:  'bg-slate-100 text-slate-600',  
 };
 
 function chip(label, color, icon) {
@@ -147,7 +148,7 @@ function initAdminShell(active, crumbs) {
         </div>
       </div>
       <nav class="mt-6 flex flex-col gap-1">${nav}</nav>
-      <a href="login.html" class="mt-auto flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50">
+      <a href="logout.php" class="mt-auto flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50">
         <span class="material-symbols-outlined text-[20px]">logout</span>Log Out
       </a>
     </aside>`;
@@ -182,10 +183,9 @@ function initAdminShell(active, crumbs) {
             <p class="text-xs text-slate-500">admin@barbershop.com</p>
           </div>
           <div class="py-1">
-            <a href="profile.html" class="block px-4 py-2.5 text-slate-700 hover:bg-slate-50 font-medium">Edit Profil</a>
           </div>
           <div class="border-t border-slate-100 py-1">
-            <a href="login.html" class="block px-4 py-2.5 text-red-600 hover:bg-red-50 font-medium">Keluar</a>
+            <a href="logout.php" class="block px-4 py-2.5 text-red-600 hover:bg-red-50 font-medium">Keluar</a>
           </div>
         </div>
       </div>
