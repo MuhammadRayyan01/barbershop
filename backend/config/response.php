@@ -4,7 +4,7 @@ declare(strict_types=1);
 function jsonResponse(int $statuscode, array $data): never{
     http_response_code($statuscode);
 
-    header('Content-Type: applicaltion/json; charset=utf-8');
+    header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
 
     try{
