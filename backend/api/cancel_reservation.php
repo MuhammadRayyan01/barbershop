@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/request.php';
 require_once __DIR__ . '/../config/csrf.php';
-require_once __DIR__ . '/../middleware/require-auth.php';
+require_once __DIR__ . '/../middleware/auth_require.php';
 
 
 if(($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'){
@@ -27,72 +27,95 @@ if(!is_int($reservationId) || $reservationId < 1){
     jsonResponse(422, ['success' => false, 'message' => 'A valid reservation ID id required']);
 }
 
-try{
-    $stmt = $pdo->prepare("selecet 
-                            r.reservation_id, r.slot_id, r.reservation_status, i.cancellation_deadline
-                            from reservation as r 
-                            on left join invoice as i
-                            on i.reservation_id = r.reservation_id
-                            where r.reservation_id = :user_id
-                            for update of r");
+try {
+    $pdo->beginTransaction();
 
-    $stmt->execute(['reservation_id' => $reservationId, 'user_id' => $_SESSION['user_id'] ?? null]);
+    $stmt = $pdo->prepare("
+        SELECT
+            r.reservation_id,
+            r.slot_id,
+            r.reservation_status,
+            i.cancellation_deadline
+        FROM reservation AS r
+        LEFT JOIN invoice AS i
+            ON i.reservation_id = r.reservation_id
+        WHERE r.reservation_id = :reservation_id
+          AND r.user_id = :user_id
+        FOR UPDATE OF r
+    ");
 
-    $reservation  = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([
+        'reservation_id' => $reservationId,
+        'user_id' => $authenticatedUserId
+    ]);
 
-    if(!$reservation){
+    $reservation = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$reservation) {
         $pdo->rollBack();
 
-        jsonResponse(404, ['success' => false, 'message' => 'Reservation not found.']);
+        jsonResponse(404, [
+            'success' => false,
+            'message' => 'Reservation not found.'
+        ]);
     }
 
-    if($reservation['reservation_sataus'] !== 'active'){
+    if ($reservation['reservation_status'] !== 'active') {
         $pdo->rollBack();
 
-        jsonResponse(409, ['This reservation is not active']);
+        jsonResponse(409, [
+            'success' => false,
+            'message' => 'This reservation is not active.'
+        ]);
     }
 
-    if ($reservation['cancellation_deadline'] === null){
+    if ($reservation['cancellation_deadline'] === null) {
         $pdo->rollBack();
 
-        jsonResponse(409, ['success' => false, 'message' => 'the cancellation deadline is not available. please contect the barber shop.']);
+        jsonResponse(409, [
+            'success' => false,
+            'message' => 'Cancellation deadline is not available.'
+        ]);
     }
 
     $deadline = strtotime($reservation['cancellation_deadline']);
 
-    if($deadline === false || time() > $deadline){
+    if ($deadline === false || time() > $deadline) {
         $pdo->rollBack();
 
-        jsonResponse(409, ['success' => false, 'message' => 'the cancellation deadlien has passed.']);
-
+        jsonResponse(409, [
+            'success' => false,
+            'message' => 'The cancellation deadline has passed.'
+        ]);
     }
 
-    $cancelStmt = $pdo->prepare("update
-                                    reservation
-                                    set reservation_status = 'inactive'
-                                    where reservation_id = :reservaion_id");
-    $cancelStmt->execute(['reservaiton_id' => $reservationId]);
+    $cancelStmt = $pdo->prepare("
+        UPDATE reservation
+        SET reservation_status = 'inactive'
+        WHERE reservation_id = :reservation_id
+    ");
 
-    $slotStmt = $pdo->prepare("update
-                                    time_slot as ts
-                                    set is_available = 'available'
-                                    where ts.slot_id = :slot_id
-                                    and ts.slot_date >= CURRENT_DATE
-                                    and not exists(select 1 form reservation as r
-                                    where r.slot_id = ts.slot_id and r.reservation_status = 'active')");
-
-    $slotStmt->execute(['slot_id' => $reservation['slot_id']]);
+    $cancelStmt->execute([
+        'reservation_id' => $reservationId
+    ]);
 
     $pdo->commit();
 
-    jsonResponse(200, ['success' => true, 'message' => 'Reservation cancelled sucessfully.']);
-}catch(PDOException $e){
-    if($pdo->inTransaction()){
+    jsonResponse(200, [
+        'success' => true,
+        'message' => 'Reservation cancelled successfully.'
+    ]);
+
+} catch (PDOException $e) {
+    if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
     error_log("Reservation cancellation API error: " . $e->getMessage());
 
-    jsonResponse(500, ['success' => false, 'message' => 'Unable to cancel reservation.']);
+    jsonResponse(500, [
+        'success' => false,
+        'message' => 'Unable to cancel reservation.'
+    ]);
 }
 ?>
