@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../config/booking.php';
 require_once __DIR__ . '/../middleware/auth_require.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
@@ -26,7 +27,6 @@ if ($method === 'GET') {
                 r.additional_service_price,
                 r.created_at,
                 s.service_name,
-                s.category,
                 ts.slot_date,
                 ts.start_time,
                 ts.end_time,
@@ -105,7 +105,7 @@ try {
     $pdo->beginTransaction();
 
     $slotStmt = $pdo->prepare("
-        SELECT slot_id
+        SELECT slot_id, is_available::text AS is_available
         FROM time_slot
         WHERE slot_id = :slot_id
           AND (
@@ -122,17 +122,18 @@ try {
         'slot_id' => $slotId
     ]);
 
-    if (!$slotStmt->fetchColumn()) {
+    $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$slot || $slot['is_available'] !== 'available') {
         $pdo->rollBack();
 
         jsonResponse(409, [
             'success' => false,
-            'message' => 'This time slot is unavailable or has already passed.'
+            'message' => 'This time slot is closed, unavailable, or has already passed.'
         ]);
     }
 
     $serviceStmt = $pdo->prepare("
-        SELECT service_id, category, price
+        SELECT service_id, price
         FROM service
         WHERE service_id = :service_id
           AND status = 'active'
@@ -166,7 +167,7 @@ $availabilityStmt->execute([
 
 $bookingCount = (int) $availabilityStmt->fetchColumn();
 
-if ($bookingCount >= 3) {
+if ($bookingCount >= BOOKING_SLOT_CAPACITY) {
     $pdo->rollBack();
 
     jsonResponse(409, [

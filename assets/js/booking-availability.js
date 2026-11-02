@@ -3,10 +3,7 @@
   const timeGroup = document.getElementById('time-group');
   if (!dateInput || !timeGroup) return;
 
-  // Align this endpoint contract with the capacity API:
-  // GET time_slot.php?date=YYYY-MM-DD
-  // { success: true, data: [{ start_time: "10:00", end_time: "10:30",
-  //   booked_count: 1, capacity: 3 }] }
+  // GET time_slot.php?date=YYYY-MM-DD returns slot times, status, booked count, capacity, and remaining capacity.
   const AVAILABILITY_ENDPOINT = '../../backend/api/time_slot.php';
   const OPEN_MINUTES = 10 * 60;
   const CLOSE_MINUTES = 22 * 60;
@@ -67,9 +64,11 @@
       const start = row.start_time.slice(0, 5);
       const capacity = Number(row.capacity);
       const booked = Number(row.booked_count);
+      const availability = String(row.is_available ?? 'available').toLowerCase();
       map.set(start, {
-        full: row.is_available === false || row.is_available === 'full' ||
+        full: row.is_full === true || row.is_available === 'full' ||
           (Number.isFinite(capacity) && Number.isFinite(booked) && capacity > 0 && booked >= capacity),
+        closed: row.is_available === false || availability === 'not available' || availability === 'closed',
         remaining: Number.isFinite(capacity) && Number.isFinite(booked)
           ? Math.max(0, capacity - booked)
           : null,
@@ -93,7 +92,8 @@
         return nowMinutes >= Number(slot.start_time.slice(0, 2)) * 60 + Number(slot.start_time.slice(3)) - 1;
       })();
       const full = status?.full ?? false;
-      const unavailable = full || elapsed || stale || !status;
+      const closed = status?.closed ?? false;
+      const unavailable = full || closed || elapsed || stale || !status;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = unavailable
@@ -105,7 +105,7 @@
       button.disabled = unavailable;
 
       const label = document.createElement('span');
-      label.className = unavailable && full
+      label.className = unavailable && (full || closed)
         ? 'block text-base sm:text-lg font-semibold line-through text-gray-300'
         : 'block text-base sm:text-lg font-semibold';
       label.textContent = slot.start_time;
@@ -117,6 +117,7 @@
       if (elapsed) note.textContent = 'Lewat';
       else if (stale) note.textContent = 'Cek koneksi';
       else if (!status) note.textContent = 'Tidak tersedia';
+      else if (closed) note.textContent = 'Ditutup admin';
       else if (full) note.textContent = 'Penuh';
       else if (status?.remaining !== null && status?.remaining !== undefined) {
         note.textContent = `${status.remaining} ${status.remaining === 1 ? 'slot' : 'slot'} tersedia`;
@@ -164,7 +165,7 @@
       renderSlots(payload.data);
     } catch (error) {
       if (error.name === 'AbortError') return;
-      // Keep the schedule usable during API development, but do not claim slots are free.
+      // Fail closed when availability cannot be loaded.
       renderSlots([], { stale: true });
     }
   }
@@ -182,7 +183,7 @@
     const button = event.target.closest('button.time-btn');
     if (!button || button.disabled) return;
     state.time = button.dataset.time;
-    // Persist stable values for the next booking step.
+    // Save the selected slot for the next step.
     sessionStorage.setItem('booking_date', state.date);
     sessionStorage.setItem('booking_time', state.time);
     if (button.dataset.slotId) sessionStorage.setItem('booking_slot_id', button.dataset.slotId);

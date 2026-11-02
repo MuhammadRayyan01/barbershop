@@ -57,7 +57,7 @@ create type res_status as enum('active', 'inactive');
 create table if not exists reservation(
         reservation_id serial primary key,
         user_id int not null,
-        slot_id int unique not null ,
+        slot_id int not null,
         service_id int not null,
         service_price decimal(10, 2),
         additional_service_id int,
@@ -74,6 +74,10 @@ create table if not exists reservation(
         constraint check_reservation_service_price check(service_price >= 0),
         constraint check_reservation_service_additional_price check(additional_service_price >= 0)
 );
+
+create index if not exists idx_reservation_active_slot
+        on reservation (slot_id)
+        where reservation_status = 'active';
 
 create table if not exists reservation_additional_services(
         reservation_id int not null,
