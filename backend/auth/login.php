@@ -54,7 +54,7 @@ if(strlen($login) > 354 || strlen($password) > 72){
 
 try{
     $stmt = $pdo -> prepare ('
-                               select user_id, username, email, password_hash, fullname, phone_number
+                               select user_id, username, email, password_hash, full_name, phone_number
                                from users where username = :username or email = :email limit 1');
     $stmt->execute(['username' => $login, 'email' => $login]);
 

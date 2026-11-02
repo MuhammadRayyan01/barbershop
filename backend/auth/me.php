@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 
-header('Content-Type: applicaton/json; charset=utf-8');
+header('Content-Type: application/json; charset=utf-8');
 
 function respond(int $status, array $data):never {
     http_response_code($status);
@@ -28,7 +28,7 @@ if(!is_int($userId) || $userId < 1){
 try{
     $stmt = $pdo->prepare('
                             select user_id, username, email, full_name, phone_number, created_at
-                            from users whrer user_id = :user_id');
+                            from users where user_id = :user_id');
 
     $stmt->execute(['user_id' => $userId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);

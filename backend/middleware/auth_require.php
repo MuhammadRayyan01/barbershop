@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/response.php';
+
 $userId = $_SESSION['user_id'] ?? null;
 
 if (!is_int($userId) || $userId < 1) {
