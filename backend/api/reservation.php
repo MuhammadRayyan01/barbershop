@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/session.php';
-require_once __DIR__ . '/../middleware/require-auth.php';
+require_once __DIR__ . '/../middleware/auth_require.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
 
@@ -153,30 +153,27 @@ try {
         ]);
     }
 
-    $availabilityStmt = $pdo->prepare("
-        SELECT 1
-        FROM reservation r
-        JOIN service s
-            ON s.service_id = r.service_id
-        WHERE r.slot_id = :slot_id
-          AND s.category = :category
-          AND r.reservation_status = 'active'
-        LIMIT 1
-    ");
+   $availabilityStmt = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM reservation
+    WHERE slot_id = :slot_id
+      AND reservation_status = 'active'
+");
 
-    $availabilityStmt->execute([
-        'slot_id' => $slotId,
-        'category' => $service['category']
+$availabilityStmt->execute([
+    'slot_id' => $slotId
+]);
+
+$bookingCount = (int) $availabilityStmt->fetchColumn();
+
+if ($bookingCount >= 3) {
+    $pdo->rollBack();
+
+    jsonResponse(409, [
+        'success' => false,
+        'message' => 'This time slot is fully booked.'
     ]);
-
-    if ($availabilityStmt->fetchColumn()) {
-        $pdo->rollBack();
-
-        jsonResponse(409, [
-            'success' => false,
-            'message' => 'This time slot is already booked for the selected category.'
-        ]);
-    }
+}
 
     $additionalPrice = null;
 
@@ -246,13 +243,77 @@ try {
 
     $reservation = $insertStmt->fetch(PDO::FETCH_ASSOC);
 
+$customerStmt = $pdo->prepare("
+    SELECT full_name, phone_number
+    FROM users
+    WHERE user_id = :user_id
+");
+
+$customerStmt->execute([
+    'user_id' => $authenticatedUserId
+]);
+
+$customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$customer || trim($customer['phone_number']) === '') {
+    $pdo->rollBack();
+
+    jsonResponse(422, [
+        'success' => false,
+        'message' => 'Customer name or phone number is unavailable.'
+    ]);
+}
+
+// Calculate the total payment
+$totalPayment = number_format(
+    (float) $reservation['service_price'] +
+    (float) ($reservation['additional_service_price'] ?? 0),
+    2,
+    '.',
+    ''
+);
+
+
+$invoiceStmt = $pdo->prepare("
+    INSERT INTO invoice (
+        reservation_id,
+        customer_name,
+        phone_number,
+        total_payment,
+        cancellation_deadline
+    )
+    VALUES (
+        :reservation_id,
+        :customer_name,
+        :phone_number,
+        :total_payment,
+        CURRENT_TIMESTAMP + INTERVAL '1 hour'
+    )
+    RETURNING
+        invoice_id,
+        reservation_id,
+        customer_name,
+        phone_number,
+        total_payment,
+        cancellation_deadline,
+        created_at
+");
+
+$invoiceStmt->execute([
+    'reservation_id' => $reservation['reservation_id'],
+    'customer_name' => $customer['full_name'],
+    'phone_number' => $customer['phone_number'],
+    'total_payment' => $totalPayment
+]);
+
+$invoice = $invoiceStmt->fetch(PDO::FETCH_ASSOC);
+
     $pdo->commit();
 
     jsonResponse(201, [
         'success' => true,
         'message' => 'Reservation created successfully.',
-        'data' => $reservation
-    ]);
+        'data' => ['reservation' => $reservation, 'invoice' => $invoice] ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
