@@ -128,14 +128,44 @@ try {
     }
 
 
-    if ($reservation['service_price'] === null) {
-        $connection->rollBack();
+   // Get the invoice amount
+$invoiceQuery = $connection->prepare("
+    SELECT total_payment
+    FROM invoice
+    WHERE reservation_id = :reservation_id
+    FOR UPDATE
+");
 
-        jsonResponse(409, [
-            'success' => false,
-            'message' => 'The reservation has no service.'
-        ]);
-    }
+$invoiceQuery->execute([
+    'reservation_id' => $reservationId
+]);
+
+$invoice = $invoiceQuery->fetch(PDO::FETCH_ASSOC);
+
+if (!$invoice) {
+    $connection->rollBack();
+
+    jsonResponse(409, [
+        'success' => false,
+        'message' => 'Invoice not found for this reservation.'
+    ]);
+}
+
+// Use the invoice amount as the payment amount
+$amount = (float) $invoice['total_payment'];
+
+if (
+    !is_finite($amount) ||
+    $amount <= 0 ||
+    $amount !== (float) round($amount)
+) {
+    $connection->rollBack();
+
+    jsonResponse(409, [
+        'success' => false,
+        'message' => 'Invoice amount is invalid.'
+    ]);
+}
 
     $amount = (float) $reservation['service_price']
         + (float) ($reservation['additional_service_price'] ?? 0);
