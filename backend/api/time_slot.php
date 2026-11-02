@@ -21,32 +21,31 @@ if($category === ''){
 try{
     $stmt = $pdo->prepare("
     SELECT
-        ts.slot_id,
-        ts.slot_date,
-        ts.start_time,
-        ts.end_time
-    FROM time_slot ts
-    WHERE (
-        ts.slot_date > CURRENT_DATE
-        OR (
-            ts.slot_date = CURRENT_DATE
-            AND ts.start_time > LOCALTIME
-        )
+    ts.slot_id,
+    ts.slot_date,
+    ts.start_time,
+    ts.end_time,
+    3 - COUNT(r.reservation_id) AS remaining_capacity
+FROM time_slot ts
+LEFT JOIN reservation r
+    ON r.slot_id = ts.slot_id
+    AND r.reservation_status = 'active'
+WHERE (
+    ts.slot_date > CURRENT_DATE
+    OR (
+        ts.slot_date = CURRENT_DATE
+        AND ts.start_time > LOCALTIME
     )
-    AND NOT EXISTS (
-        SELECT 1
-        FROM reservation r
-        JOIN service s
-            ON s.service_id = r.service_id
-        WHERE r.slot_id = ts.slot_id
-          AND s.category = :category
-          AND r.reservation_status = 'active'
-    )
-    ORDER BY ts.slot_date, ts.start_time
+)
+GROUP BY
+    ts.slot_id,
+    ts.slot_date,
+    ts.start_time,
+    ts.end_time
+HAVING COUNT(r.reservation_id) < 3
+ORDER BY ts.slot_date, ts.start_time;
 ");
-    $stmt->execute([
-        'category' => $category
-    ]);
+    $stmt->execute();
 
     $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -54,6 +53,6 @@ try{
 }catch(PDOException $e){
     error_log('Time slot API error: ' .$e->getMessage());
 
-    jsonResponse(500, ['success' => false, 'message' => 'Unable to load avalible time slots.']);
+    jsonResponse(500, ['success' => false, 'message' => 'Unable to load available time slots.']);
 }
 ?>
