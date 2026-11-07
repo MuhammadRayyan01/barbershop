@@ -65,25 +65,10 @@ if (($_GET['export'] ?? '') === 'csv') {
 $escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $stateLabels = ['waiting' => 'Menunggu Refund', 'refunded' => 'Refund Selesai Dicatat', 'void' => 'Belum Ada Pembayaran'];
 $stateClasses = ['waiting' => 'bg-amber-100 text-amber-700', 'refunded' => 'bg-emerald-100 text-emerald-800', 'void' => 'bg-indigo-100 text-indigo-700'];
+$adminPageTitle = 'Refunds & Invoices | Pemon Admin';
+$adminPageScript = '../assets/js/refunds.js';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Refunds &amp; Invoices | Pemon Admin</title>
-  <link rel="stylesheet" href="../assets/css/tailwind.css">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    @media print { #admin-sidebar, #admin-topbar, .no-print { display: none !important; } main { margin: 0 !important; } }
-  </style>
-</head>
-<body class="bg-[#f8f8fd] text-slate-900">
-
-  <div id="admin-sidebar" data-admin-name="<?= $escape($_SESSION['admin_name'] ?? 'Admin') ?>"></div>
-  <div id="admin-topbar"></div>
+<?php require __DIR__ . '/includes/header.php'; ?>
 
   <main class="lg:ml-72 px-4 sm:px-8 py-8">
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -185,7 +170,4 @@ $stateClasses = ['waiting' => 'bg-amber-100 text-amber-700', 'refunded' => 'bg-e
     <input type="hidden" name="status" value="<?= $escape($statusFilter) ?>">
   </form>
 
-  <script src="../assets/js/admin.js"></script>
-  <script src="../assets/js/refunds.js"></script>
-</body>
-</html>
+<?php require __DIR__ . '/includes/footer.php'; ?>

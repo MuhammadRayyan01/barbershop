@@ -1,0 +1,15 @@
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+@media print {
+  #admin-sidebar,
+  #admin-topbar,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+  }
+}
