@@ -11,8 +11,8 @@ function getCsrfToken(): string {
     return $_SESSION['csrf_token'];
 }
 
-function requireValidCsrfToken(): void{
-    $submittedToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+function requireValidCsrfToken(?string $formToken = null): void{
+    $submittedToken = $formToken ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
     $sessionToken = $_SESSION['csrf_token'] ?? '';
 
     if (!is_string($submittedToken) || !is_string($sessionToken) || $submittedToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $submittedToken)) {

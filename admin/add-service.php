@@ -1,4 +1,44 @@
-<?php require_once __DIR__ . '/../backend/middleware/require_admin_page.php'; ?>
+<?php
+require_once __DIR__ . '/../backend/middleware/require_admin_page.php';
+require_once __DIR__ . '/../backend/config/csrf.php';
+
+$csrfToken = getCsrfToken();
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$pageError = '';
+$formData = ['service_name' => '', 'price' => '', 'description' => '', 'status' => 'active'];
+
+if ($requestMethod === 'POST') {
+    $formData = [
+        'service_name' => trim((string) ($_POST['service_name'] ?? '')),
+        'price' => preg_replace('/\D+/', '', (string) ($_POST['price'] ?? '')),
+        'description' => trim((string) ($_POST['description'] ?? '')),
+        'status' => $_POST['status'] ?? 'active',
+    ];
+    requireValidCsrfToken(is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '');
+
+    if ($formData['service_name'] === '' || strlen($formData['service_name']) > 255 || $formData['price'] === '' || (float) $formData['price'] > 99999999.99 || strlen($formData['description']) > 10000 || !in_array($formData['status'], ['active', 'inactive'], true)) {
+        $pageError = 'Periksa kembali nama, harga, deskripsi, dan status layanan.';
+    } else {
+        try {
+            $stmt = $pdo->prepare('INSERT INTO service (service_name, description, price, status) VALUES (:name, :description, :price, :status)');
+            $stmt->execute([
+                'name' => $formData['service_name'],
+                'description' => $formData['description'] === '' ? null : $formData['description'],
+                'price' => $formData['price'],
+                'status' => $formData['status'],
+            ]);
+            $_SESSION['admin_flash'] = 'Layanan baru berhasil ditambahkan.';
+            header('Location: services.php');
+            exit;
+        } catch (PDOException $e) {
+            error_log('Admin service creation error: ' . $e->getMessage());
+            $pageError = 'Layanan gagal disimpan ke database.';
+        }
+    }
+}
+
+$escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -12,20 +52,20 @@
 </head>
 <body class="bg-[#f8f8fd] text-slate-900">
 
-  <div id="admin-sidebar"></div>
+  <div id="admin-sidebar" data-admin-name="<?= $escape($_SESSION['admin_name'] ?? 'Admin') ?>"></div>
   <div id="admin-topbar"></div>
 
   <main class="lg:ml-72 px-4 sm:px-8 py-8">
     <h1 class="text-2xl sm:text-3xl font-extrabold">Tambah Layanan Baru</h1>
-    <p class="text-sm text-slate-500 mt-1">Layanan baru langsung muncul di aplikasi kasir dan halaman booking pelanggan.</p>
+    <p class="text-sm text-slate-500 mt-1">Tambahkan layanan ke daftar yang tersimpan di database.</p>
 
-    <!-- PHP nanti: action="../includes/add_service.php" method="POST" -> INSERT INTO service -->
-    <form id="add-form" class="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mt-6 max-w-2xl space-y-5" novalidate>
+    <form id="add-form" method="post" action="add-service.php" class="bg-white rounded-2xl shadow-sm p-6 sm:p-8 mt-6 max-w-2xl space-y-5" novalidate>
+      <input type="hidden" name="csrf_token" value="<?= $escape($csrfToken) ?>">
       <div>
         <div class="flex justify-between mb-2"><label for="f-name" class="text-sm font-semibold">Service Name</label><span class="text-[11px] text-slate-400">Wajib diisi</span></div>
         <div class="flex items-center gap-3 bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-[#0d3b36]/40">
           <span class="material-symbols-outlined text-[20px] text-slate-500">content_cut</span>
-          <input id="f-name" name="service_name" type="text" placeholder="Contoh: Hair Spa" class="w-full bg-transparent outline-none text-sm">
+          <input id="f-name" name="service_name" type="text" value="<?= $escape($formData['service_name']) ?>" placeholder="Contoh: Hair Spa" class="w-full bg-transparent outline-none text-sm">
         </div>
       </div>
 
@@ -34,23 +74,24 @@
         <div class="flex items-center gap-3 bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-[#0d3b36]/40">
           <span class="material-symbols-outlined text-[20px] text-slate-500">payments</span>
           <span class="text-sm text-slate-500">Rp</span>
-          <input id="f-price" name="price" type="text" inputmode="numeric" placeholder="0" class="w-full bg-transparent outline-none text-sm">
+          <input id="f-price" name="price" type="text" value="<?= $escape($formData['price']) ?>" inputmode="numeric" placeholder="0" class="w-full bg-transparent outline-none text-sm">
         </div>
       </div>
 
       <div>
         <label for="f-desc" class="text-sm font-semibold block mb-2">Deskripsi Singkat</label>
-        <textarea id="f-desc" name="description" rows="3" placeholder="Jelaskan isi layanan..." class="w-full bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 outline-none text-sm focus:ring-2 focus:ring-[#0d3b36]/40"></textarea>
+        <textarea id="f-desc" name="description" rows="3" placeholder="Jelaskan isi layanan..." class="w-full bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 outline-none text-sm focus:ring-2 focus:ring-[#0d3b36]/40"><?= $escape($formData['description']) ?></textarea>
       </div>
 
       <div>
         <label for="f-status" class="text-sm font-semibold block mb-2">Status</label>
         <select id="f-status" name="status" class="w-full bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 outline-none text-sm">
-          <option value="active">Active (tampil di booking)</option>
-          <option value="inactive">Inactive (disembunyikan)</option>
+          <option value="active" <?= $formData['status'] === 'active' ? 'selected' : '' ?>>Active (tampil di booking)</option>
+          <option value="inactive" <?= $formData['status'] === 'inactive' ? 'selected' : '' ?>>Inactive (disembunyikan)</option>
         </select>
       </div>
 
+      <?php if ($pageError !== ''): ?><p class="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2"><?= $escape($pageError) ?></p><?php endif; ?>
       <p id="f-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2"></p>
 
       <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -61,25 +102,6 @@
   </main>
 
   <script src="../assets/js/admin.js"></script>
-  <script>
-    initAdminShell('add-service', ['Studio Management', 'Administration Portal', 'Add Service']);
-
-    document.getElementById('f-price').addEventListener('input', e => {
-      const n = digitsOnly(e.target.value);
-      e.target.value = n ? n.toLocaleString('id-ID') : '';
-    });
-
-    document.getElementById('add-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const err = document.getElementById('f-error');
-      if (!document.getElementById('f-name').value.trim() || !digitsOnly(document.getElementById('f-price').value)) {
-        err.textContent = 'Nama layanan dan harga wajib diisi.';
-        err.classList.remove('hidden');
-        return;
-      }
-      toast('Layanan tersimpan');
-      setTimeout(() => { window.location.href = 'services.php'; }, 700);
-    });
-  </script>
+  <script src="../assets/js/admin-add-service.js"></script>
 </body>
 </html>
