@@ -1,8 +1,14 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../backend/config/session.php';
+require_once __DIR__ . '/../backend/config/db.php';
+require_once __DIR__ . '/../backend/config/csrf.php';
+
+$csrfToken = getCsrfToken();
+$loginError = '';
+$username = '';
+
 if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
-    require_once __DIR__ . '/../backend/config/db.php';
     $stmt = $pdo->prepare('SELECT 1 FROM admin WHERE admin_id = :admin_id');
     $stmt->execute(['admin_id' => $_SESSION['admin_id']]);
     if ($stmt->fetchColumn()) {
@@ -11,6 +17,36 @@ if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
     }
     unset($_SESSION['admin_id'], $_SESSION['admin_name']);
 }
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    requireValidCsrfToken(is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '');
+    $username = trim((string) ($_POST['username'] ?? ''));
+    $password = $_POST['password'] ?? '';
+    if ($username === '' || !is_string($password) || $password === '') {
+        $loginError = 'Username dan password wajib diisi.';
+    } else {
+        try {
+            $stmt = $pdo->prepare('SELECT admin_id, username, email, full_name, password_hash FROM admin WHERE username = :username OR email = :email LIMIT 1');
+            $stmt->execute(['username' => $username, 'email' => $username]);
+            $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$admin || !password_verify($password, $admin['password_hash'])) {
+                $loginError = 'Username atau password salah.';
+            } else {
+                session_regenerate_id(true);
+                $_SESSION['admin_id'] = (int) $admin['admin_id'];
+                $_SESSION['admin_name'] = $admin['full_name'];
+                unset($_SESSION['csrf_token']);
+                header('Location: dashboard.php');
+                exit;
+            }
+        } catch (PDOException $e) {
+            error_log('Admin login error: ' . $e->getMessage());
+            $loginError = 'Login gagal diproses. Coba lagi.';
+        }
+    }
+}
+
+$escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -25,7 +61,6 @@ if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
 </head>
 <body class="min-h-screen bg-[#f8f8fd] text-slate-900 flex flex-col items-center justify-center p-6">
 
-  <!-- Brand -->
   <div class="flex flex-col items-center mb-6">
     <div class="w-14 h-14 rounded-full bg-[#0d3b36] text-white flex items-center justify-center shadow-md">
       <span class="material-symbols-outlined">content_cut</span>
@@ -33,13 +68,12 @@ if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
     <p class="mt-3 text-[11px] font-bold tracking-[0.18em] text-slate-600">PEMON ARTISANAL ATELIER</p>
   </div>
 
-  <!-- Card login -->
   <main class="w-full max-w-md bg-white rounded-2xl shadow-lg shadow-slate-200/70 p-8">
     <h1 class="text-2xl font-extrabold text-center">Admin Log</h1>
     <p class="text-sm text-slate-500 text-center mt-1">Masuk ke portal manajemen kasir &amp; reservasi</p>
 
-    <!-- PHP nanti: action="../includes/admin_login.php" method="POST" -->
-    <form id="login-form" class="mt-8 space-y-5" novalidate>
+    <form id="login-form" method="post" action="login.php" class="mt-8 space-y-5" novalidate>
+      <input type="hidden" name="csrf_token" value="<?= $escape($csrfToken) ?>">
       <div>
         <div class="flex justify-between items-center mb-2">
           <label for="username" class="text-sm font-semibold">Username</label>
@@ -47,7 +81,7 @@ if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
         </div>
         <div class="flex items-center gap-3 bg-[#f8f8fd] rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-[#0d3b36]/40">
           <span class="material-symbols-outlined text-[20px] text-slate-500">person</span>
-          <input id="username" name="username" type="text" autocomplete="username" placeholder="Masukkan username admin"
+          <input id="username" name="username" type="text" value="<?= $escape($username) ?>" autocomplete="username" placeholder="Masukkan username admin"
                  class="w-full bg-transparent outline-none text-sm">
         </div>
       </div>
@@ -64,7 +98,7 @@ if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
         </div>
       </div>
 
-      <p id="login-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2"></p>
+      <?php if ($loginError !== ''): ?><p class="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2"><?= $escape($loginError) ?></p><?php endif; ?>
 
       <button type="submit" class="w-full py-3 rounded-xl bg-[#0d3b36] hover:bg-[#082724] text-white text-sm font-bold transition">
         Masuk
@@ -74,44 +108,6 @@ if (isset($_SESSION['admin_id']) && is_int($_SESSION['admin_id'])) {
 
   <p class="text-xs text-slate-400 mt-6">&copy; Pemon Barbershop &middot; Administration Portal</p>
 
-  <script>
-    // tampilkan / sembunyikan password
-    const pass = document.getElementById('password');
-    document.getElementById('toggle-pass').addEventListener('click', e => {
-      const show = pass.type === 'password';
-      pass.type = show ? 'text' : 'password';
-      e.currentTarget.querySelector('span').textContent = show ? 'visibility_off' : 'visibility';
-    });
-
-    // Autentikasi akun admin dan buat sesi server sebelum membuka dashboard.
-    document.getElementById('login-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const err = document.getElementById('login-error');
-      const user = document.getElementById('username').value.trim();
-      if (!user || !pass.value) {
-        err.textContent = 'Username dan password wajib diisi.';
-        err.classList.remove('hidden');
-        return;
-      }
-      const submit = e.currentTarget.querySelector('button[type="submit"]');
-      submit.disabled = true;
-      submit.textContent = 'Memeriksa…';
-      fetch('../backend/auth/admin_login.php', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ login: user, password: pass.value })
-      }).then(async response => {
-        const payload = await response.json();
-        if (!response.ok || !payload.success) throw new Error(payload.message || 'Login admin gagal.');
-        window.location.href = 'dashboard.php';
-      }).catch(error => {
-        err.textContent = error.message || 'Tidak dapat terhubung ke server.';
-        err.classList.remove('hidden');
-        submit.disabled = false;
-        submit.textContent = 'Masuk';
-      });
-    });
-  </script>
+  <script src="../assets/js/admin-login.js"></script>
 </body>
 </html>
