@@ -49,18 +49,23 @@ if ($method === 'DELETE') {
 $name = trim((string) ($data['service_name'] ?? ''));
 $description = trim((string) ($data['description'] ?? ''));
 $priceInput = $data['price'] ?? null;
-if ($name === '' || mb_strlen($name) > 255 || !is_numeric($priceInput) || (float) $priceInput < 0 || (float) $priceInput > 99999999.99 || ($description !== '' && mb_strlen($description) > 10000)) {
+$newStatus = $data['status'] ?? 'active';
+if ($name === '' || strlen($name) > 255 || !is_numeric($priceInput) || (float) $priceInput < 0 || (float) $priceInput > 99999999.99 || strlen($description) > 10000) {
     jsonResponse(422, ['success' => false, 'message' => 'Provide a valid service name, description, and non-negative price.']);
+}
+if ($method === 'POST' && !in_array($newStatus, ['active', 'inactive'], true)) {
+    jsonResponse(422, ['success' => false, 'message' => 'Service status must be active or inactive.']);
 }
 
 try {
     if ($method === 'POST') {
-        $stmt = $pdo->prepare("INSERT INTO service (service_name, description, price, status) VALUES (:name, :description, :price, 'active') RETURNING service_id, service_name, description, price, status");
+        $stmt = $pdo->prepare('INSERT INTO service (service_name, description, price, status) VALUES (:name, :description, :price, :status) RETURNING service_id, service_name, description, price, status');
     } else {
         if (!is_int($serviceId) || $serviceId < 1) jsonResponse(422, ['success' => false, 'message' => 'A valid service ID is required.']);
         $stmt = $pdo->prepare('UPDATE service SET service_name = :name, description = :description, price = :price, updated_at = CURRENT_TIMESTAMP WHERE service_id = :id RETURNING service_id, service_name, description, price, status');
     }
     $params = ['name' => $name, 'description' => $description === '' ? null : $description, 'price' => number_format((float) $priceInput, 2, '.', '')];
+    if ($method === 'POST') $params['status'] = $newStatus;
     if ($method === 'PATCH') $params['id'] = $serviceId;
     $stmt->execute($params);
     $service = $stmt->fetch(PDO::FETCH_ASSOC);
