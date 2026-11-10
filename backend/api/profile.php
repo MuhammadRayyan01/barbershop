@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/session.php';
-require_once __DIR__ . '/../middleware/require-auth.php';
+require_once __DIR__ . '/../middleware/auth_require.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
 
@@ -34,9 +34,6 @@ if ($method === 'GET') {
         jsonResponse(500, ['success' => false, 'message' => 'Unable to load profile.']);
     }
 }
-
-require_once __DIR__ . '/../config/request.php';
-require_once __DIR__ . '/../config/csrf.php';
 
 require_once __DIR__ . '/../config/request.php';
 require_once __DIR__ . '/../config/csrf.php';
