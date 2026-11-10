@@ -212,4 +212,4 @@ function closeProfileModal(){
     accountError.classList.remove('hidden');
   }
 
-});
+}); 
