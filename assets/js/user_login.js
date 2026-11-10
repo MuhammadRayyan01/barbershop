@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
             console.log('login successful: ', result.data);
 
-            window.location.href = 'dashboard/index.html';
+            window.location.href = 'dashboard/index.php';
         }catch(error){
             console.error('login error: ', error);
             showMessage(error.message || 'unable to connect to the server.');
