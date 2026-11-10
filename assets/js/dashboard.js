@@ -10,9 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const accountEmail = document.getElementById('akun-email');
 
   const accountEditBtn = document.getElementById('akun-edit-btn');
-  const accountModal = document.getElementById('akun-model');
+  const accountModal = document.getElementById('akun-modal');
   const accountForm = document.getElementById('akun-form');
-  const accountCancelBtn = document.getElementById('account-batal');
+  const accountCancelBtn = document.getElementById('akun-batal');
 
   const inputName = document.getElementById('akun-input-nama');
   const inputPhone = document.getElementById('akun-input-hp');
@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const accountError = document.getElementById('akun-error');
 
-  const csrfToken = document.querySelector('meta[nama="csrf-token"]')?.content;
+  const csrfToken = document.querySelector(
+    'meta[name="csrf-token"]')?.content;
 
   if(!accountBtn || !accountMenu || !accountModal || !accountForm){
     console.error('Dashboard account elements are missing');
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if(accountName){
-      accountName.textContent = accountName;
+      accountName.textContent = fullName;
     }
 
     if(accountPhone){
@@ -118,11 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
     accountModal.classList.add('flex');
   }
 
-  function closeProfileModal(){
+function closeProfileModal(){
     accountModal.classList.add('hidden');
-    accountModal.classList.remove('hidden');
-
-  }
+    accountModal.classList.remove('flex');
+}
 
   accountBtn?.addEventListener('click', openProfileModel);
   accountCancelBtn?.addEventListener('click', closeProfileModal);
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  accountFrom.addEventListener('submit', async (event) => {
+  accountForm.addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const fullName = inputName.value.trim();
@@ -187,8 +187,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      if
+      if(!response.ok || !result.success){
+        throw new Error(result.message || 'Profile update failed.');
+      }
+
+      displayCustomer(result.data);
+      closeProfileModal();
+
+      alert('your profile has been updated successfully');
+    }catch(error){
+      console.error('profile update error: ',error);
+      showProfileError(error.message);
+
+    }finally{
+      if(submitButton){
+        submitButton.disabled = false;
+        submitButton.textContent = 'Simpan Perbahan';
+      }
     }
   });
+
+  function showProfileError(message){
+    accountError.textContent = message;
+    accountError.classList.remove('hidden');
+  }
 
 });
