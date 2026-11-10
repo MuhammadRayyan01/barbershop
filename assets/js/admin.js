@@ -1,6 +1,6 @@
 const ADMIN_NAV = [
   { key: 'dashboard',   label: 'Dashboard',   icon: 'dashboard',       href: 'dashboard.php' },
-  { key: 'reservations', label: 'Reservations', icon: 'calendar_month', href: 'dashboard.php' },
+  { key: 'reservations', label: 'Reservations', icon: 'calendar_month', href: 'reservations.php' },
   { key: 'services',    label: 'Services',    icon: 'content_cut',     href: 'services.php' },
   { key: 'slots',       label: 'Time Slots',  icon: 'schedule',        href: 'time-slots.php' },
   { key: 'add-service', label: 'Add Service', icon: 'add_circle',      href: 'add-service.php' },
