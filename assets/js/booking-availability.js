@@ -10,8 +10,12 @@
   const STEP_MINUTES = 30;
   const REFRESH_MS = 30_000;
 
-  const state = { date: '', time: '', timer: null, request: null };
-  const continueLink = document.getElementById('continue-booking');
+  const state = { date: '', time: '', slotId: '', serviceId: '', timer: null, request: null };
+  const bookingForm = document.getElementById('booking-form');
+  const selectedServiceInput = document.getElementById('selected-service-id');
+  const selectedSlotInput = document.getElementById('selected-slot-id');
+  const continueButton = document.getElementById('continue-booking');
+  const serviceButtons = document.querySelectorAll('.service-option');
 
   function localDateString(date = new Date()) {
     const year = date.getFullYear();
@@ -49,13 +53,31 @@
   }
 
   function updateContinueState() {
-    if (!continueLink) return;
-    const ready = Boolean(state.date && state.time);
-    continueLink.setAttribute('aria-disabled', String(!ready));
-    continueLink.classList.toggle('pointer-events-none', !ready);
-    continueLink.classList.toggle('bg-gray-400', !ready);
-    continueLink.classList.toggle('bg-[#0d3b36]', ready);
+    if (!continueButton) return;
+    const ready = Boolean(state.serviceId && state.date && state.slotId);
+    continueButton.disabled = !ready;
+    continueButton.classList.toggle('bg-gray-400', !ready);
+    continueButton.classList.toggle('bg-[#0d3b36]', ready);
   }
+
+  serviceButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      serviceButtons.forEach((serviceButton) => {
+        serviceButton.setAttribute('aria-pressed', 'false');
+        serviceButton.classList.remove('border-2', 'border-[#0d3b36]');
+        serviceButton.classList.add('border', 'border-gray-200');
+      });
+      button.setAttribute('aria-pressed', 'true');
+      button.classList.remove('border', 'border-gray-200');
+      button.classList.add('border-2', 'border-[#0d3b36]');
+      state.serviceId = button.dataset.serviceId;
+      selectedServiceInput.value = state.serviceId;
+      updateContinueState();
+    });
+  });
+
+  const initialServiceId = Number(selectedServiceInput?.value || 0);
+  state.serviceId = initialServiceId > 0 ? String(initialServiceId) : '';
 
   function readAvailability(rows) {
     const map = new Map();
@@ -133,7 +155,11 @@
       timeGroup.append(button);
     });
 
-    if (!selectionStillValid) state.time = '';
+    if (!selectionStillValid) {
+      state.time = '';
+      state.slotId = '';
+      selectedSlotInput.value = '';
+    }
     updateSummary();
 
     const hint = document.createElement('p');
@@ -175,6 +201,8 @@
   dateInput.addEventListener('change', () => {
     state.date = dateInput.value;
     state.time = '';
+    state.slotId = '';
+    selectedSlotInput.value = '';
     updateSummary();
     loadAvailability();
   });
@@ -183,11 +211,8 @@
     const button = event.target.closest('button.time-btn');
     if (!button || button.disabled) return;
     state.time = button.dataset.time;
-    // Save the selected slot for the next step.
-    sessionStorage.setItem('booking_date', state.date);
-    sessionStorage.setItem('booking_time', state.time);
-    if (button.dataset.slotId) sessionStorage.setItem('booking_slot_id', button.dataset.slotId);
-    else sessionStorage.removeItem('booking_slot_id');
+    state.slotId = button.dataset.slotId || '';
+    selectedSlotInput.value = state.slotId;
     renderSlotsFromCurrentButtons();
   });
 
@@ -206,11 +231,11 @@
     updateSummary();
   }
 
-  if (continueLink) {
-    continueLink.addEventListener('click', (event) => {
-      if (!state.date || !state.time) {
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', (event) => {
+      if (!state.serviceId || !state.date || !state.slotId) {
         event.preventDefault();
-        window.alert('Pilih tanggal dan waktu yang tersedia terlebih dahulu.');
+        window.alert('Pilih layanan, tanggal, dan waktu yang tersedia terlebih dahulu.');
       }
     });
   }

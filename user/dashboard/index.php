@@ -38,9 +38,9 @@ $csrfToken = getCsrfToken();
       <span class="font-bold tracking-wide">PEMON <br><span class="text-xs font-normal text-gray-500">BARBERSHOP</span></span>
     </div>
     <nav class="hidden md:flex items-center gap-6 font-medium text-sm" aria-label="Navigasi utama">
-      <a href="../dashboard/index.html" aria-current="page" class="text-[#0d3b36]">Dashboard</a>
-      <a href="../dashboard/schedule.html" class="text-gray-600 hover:text-[#0d3b36]">Schedule</a>
-      <a href="../dashboard/aboutUs.html" class="text-gray-600 hover:text-[#0d3b36]">About Us</a>
+      <a href="index.php" aria-current="page" class="text-[#0d3b36]">Dashboard</a>
+      <a href="schedule.php" class="text-gray-600 hover:text-[#0d3b36]">Schedule</a>
+      <a href="aboutUs.html" class="text-gray-600 hover:text-[#0d3b36]">About Us</a>
     </nav>
     <!-- Tombol Akun -->
     <div class="relative">
@@ -56,8 +56,10 @@ $csrfToken = getCsrfToken();
           <p id="akun-email" class="text-xs text-gray-500"></p>
         </div>
         <button id="akun-edit-btn" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Edit Profil</button>
-        <a href="../dashboard/schedule.html" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
-        <a href="../../backend/auth/logout.php" class="block px-4 py-2 text-red-600 hover:bg-red-50">Keluar</a>
+        <a href="schedule.php" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
+        <form method="post" action="../../backend/auth/logout.php">
+          <button type="submit" class="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50">Keluar</button>
+        </form>
       </div>
     </div>
   </header>
@@ -125,7 +127,7 @@ $csrfToken = getCsrfToken();
         <h3 class="font-bold text-[#0d3b36] text-sm">◎ &nbsp;Studio Senopati, Jakarta Selatan</h3>
         <p class="text-xs text-gray-600 mt-1">◷ &nbsp;Buka Setiap Hari: 10:00 - 21:00 WIB</p>
       </div>
-      <a href="../booking/booking.html" class="bg-[#0d3b36] hover:bg-[#082724] text-white font-semibold text-sm px-6 py-3 rounded-xl transition flex items-center gap-2">
+      <a href="../booking/booking.php" class="bg-[#0d3b36] hover:bg-[#082724] text-white font-semibold text-sm px-6 py-3 rounded-xl transition flex items-center gap-2">
         Mulai Reservasi Sekarang <span>&rarr;</span>
       </a>
     </div>
