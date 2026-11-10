@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             return;
         }
 
-        submitButton.disabled=true;
+        submitButton.disabled=true; 
         submitButton.innerHTML = 'Memproses....';
         submitButton.classList.add('opacity-70', 'cursor-not-allowed');
 
