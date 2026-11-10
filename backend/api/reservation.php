@@ -310,6 +310,7 @@ $invoiceStmt->execute([
 $invoice = $invoiceStmt->fetch(PDO::FETCH_ASSOC);
 
     $pdo->commit();
+    unset($_SESSION['booking_draft']);
 
     jsonResponse(201, [
         'success' => true,

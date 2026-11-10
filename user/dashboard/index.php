@@ -127,7 +127,7 @@ $csrfToken = getCsrfToken();
         <h3 class="font-bold text-[#0d3b36] text-sm">◎ &nbsp;Studio Senopati, Jakarta Selatan</h3>
         <p class="text-xs text-gray-600 mt-1">◷ &nbsp;Buka Setiap Hari: 10:00 - 21:00 WIB</p>
       </div>
-      <a href="../booking/booking.html" class="bg-[#0d3b36] hover:bg-[#082724] text-white font-semibold text-sm px-6 py-3 rounded-xl transition flex items-center gap-2">
+      <a href="../booking/booking.php" class="bg-[#0d3b36] hover:bg-[#082724] text-white font-semibold text-sm px-6 py-3 rounded-xl transition flex items-center gap-2">
         Mulai Reservasi Sekarang <span>&rarr;</span>
       </a>
     </div>

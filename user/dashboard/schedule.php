@@ -95,7 +95,7 @@ $availableTimeCount = static function (array $daySlots): int {
       <a href="schedule.php" aria-current="page" class="font-semibold text-[#0d3b36]">Jadwal</a>
       <a href="aboutUs.html" class="text-gray-600 hover:text-[#0d3b36]">Tentang</a>
     </nav>
-    <a href="../booking/booking.html" class="rounded-xl bg-[#0d3b36] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
+    <a href="../booking/booking.php" class="rounded-xl bg-[#0d3b36] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
   </header>
 
   <main class="mx-auto w-full max-w-6xl py-6">
@@ -182,7 +182,7 @@ $availableTimeCount = static function (array $daySlots): int {
             <?php endforeach; ?>
           </div>
           <?php if ($availableTimeCount($slots) > 0): ?>
-            <a href="../booking/booking.html" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#0d3b36] px-4 py-3 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
+            <a href="../booking/booking.php" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#0d3b36] px-4 py-3 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
           <?php endif; ?>
         <?php endif; ?>
       </div>
