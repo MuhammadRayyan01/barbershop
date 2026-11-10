@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/session.php';
 
-header('Content-Type: application/json; charset-utf-8');
+$accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+$expectsJson = str_contains($accept, 'application/json') || str_contains($contentType, 'application/json');
 
 function respond(int $status, array $data): never {
     http_response_code($status);
@@ -13,11 +15,21 @@ function respond(int $status, array $data): never {
 
 if($_SERVER['REQUEST_METHOD'] !== 'POST'){
     header('Allow: POST');
-    respond(405, ['success' => false, 'message' => 'Method not allowed.']);
+    if ($expectsJson) {
+        header('Content-Type: application/json; charset=utf-8');
+        respond(405, ['success' => false, 'message' => 'Method not allowed.']);
+    }
+    http_response_code(405);
+    exit('Method not allowed.');
 }
 
 if(!isset($_SESSION['user_id'])){
-    respond(401, ['success' => false,'message' => 'You are not logged in.']);
+    if ($expectsJson) {
+        header('Content-Type: application/json; charset=utf-8');
+        respond(401, ['success' => false,'message' => 'You are not logged in.']);
+    }
+    header('Location: /user/login.php');
+    exit;
 }
 
 $_SESSION = [];
@@ -29,12 +41,18 @@ if (ini_get('session.use_cookies')){
                 [     
                 'expires' => time() - 42000,
                 'path' => $cookieParams['path'],
-                'domain' => $cookieParams['secure'],
+                'domain' => $cookieParams['domain'],
                 'httponly' => $cookieParams['httponly'],
                 'samesite' => $cookieParams['samesite'] ?? 'Lax'
                 ]);
 }
 
 session_destroy();
-respond(200, ['success' => true, 'message' => 'Logout successful']);
+if ($expectsJson) {
+    header('Content-Type: application/json; charset=utf-8');
+    respond(200, ['success' => true, 'message' => 'Logout successful']);
+}
+
+header('Location: /user/login.php');
+exit;
 ?>
