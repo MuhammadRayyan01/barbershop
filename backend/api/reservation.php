@@ -17,7 +17,7 @@ if (!in_array($method, ['GET', 'POST'], true)) {
     ]);
 }
 
-if ($method === 'GET') {
+if ($method === 'GET') { 
     try {
         $stmt = $pdo->prepare("
             SELECT
