@@ -78,7 +78,7 @@ $csrfToken = getCsrfToken();
 
       <div class="grid grid-cols-2 gap-4 sm:gap-8" aria-label="Ringkasan reservasi">
         <div class="space-y-1">
-          <span aria-hidden="true" class="text-lg">▦</span>
+          <span aria-hidden="true" class="text-lg">▦</span> 
           <p id="jumlah-reservasi" class="text-2xl font-bold">0</p>
           <p class="text-xs sm:text-sm text-gray-600">Reservasi mendatang</p>
         </div>
