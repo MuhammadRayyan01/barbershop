@@ -13,56 +13,14 @@ if(!is_int($userId) || $userId < 1){
 
 $csrfToken = getCsrfToken();
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Arial', sans-serif; /* Change 'Arial' to your desired font */
-        }
-    </style>
-    <title>Dashboard Pelanggan | Pemon Barbershop</title>
-
-    <!-- Tailwind CSS via CDN -->
-  <link rel="stylesheet" href="../../assets/css/tailwind.css">
-</head>
-<body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
-
-  <!-- Header / Navbar -->
-  <header class="max-w-5xl w-full mx-auto flex justify-between items-center py-4">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-[#0d3b36] text-white flex items-center justify-center rounded-lg font-bold text-xl">P</div>
-      <span class="font-bold tracking-wide">PEMON <br><span class="text-xs font-normal text-gray-500">BARBERSHOP</span></span>
-    </div>
-    <nav class="hidden md:flex items-center gap-6 font-medium text-sm" aria-label="Navigasi utama">
-      <a href="index.php" aria-current="page" class="text-[#0d3b36]">Dashboard</a>
-      <a href="schedule.php" class="text-gray-600 hover:text-[#0d3b36]">Schedule</a>
-      <a href="aboutUs.html" class="text-gray-600 hover:text-[#0d3b36]">About Us</a>
-    </nav>
-    <!-- Tombol Akun -->
-    <div class="relative">
-      <button id="akun-btn" class="flex items-center gap-2">
-        <span class="w-10 h-10 bg-[#0d3b36] text-white rounded-full flex items-center justify-center font-bold">R</span>
-        <span class="hidden sm:block text-sm font-medium">Akun</span>
-      </button>
-      <div id="akun-menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 z-40 text-sm">
-        <div class="p-4 border-b border-gray-100">
-          <p class="font-bold">Halo, <span id="akun-nama-depan"></span></p>
-          <p id="akun-nama" class="text-xs text-gray-500 mt-1"></p>
-          <p id="akun-hp" class="text-xs text-gray-500"></p>
-          <p id="akun-email" class="text-xs text-gray-500"></p>
-        </div>
-        <button id="akun-edit-btn" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Edit Profil</button>
-        <a href="schedule.php" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
-        <form method="post" action="../../backend/auth/logout.php">
-          <button type="submit" class="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50">Keluar</button>
-        </form>
-      </div>
-    </div>
-  </header>
+<?php
+$userPageTitle = 'Dashboard Pelanggan | Pemon Barbershop';
+$userActivePage = 'dashboard';
+$userBodyClass = 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6 flex flex-col';
+$userShowProfileEdit = true;
+$userPageScripts = ['../../assets/js/dashboard.js'];
+require __DIR__ . '/../includes/header.php';
+?>
 <!-- Main Content -->
   <main class="max-w-3xl w-full mx-auto my-8 space-y-4">
     
@@ -160,14 +118,4 @@ $csrfToken = getCsrfToken();
       </div>
     </form>
   </div>
-  <script src="../../assets/js/dashboard.js"></script>
- <!-- Footer -->
-  <footer class="max-w-5xl w-full mx-auto text-xs text-gray-400 flex justify-between items-center py-4">
-    <p>© 2025 Pemon Barbershop. All rights reserved.</p>
-    <div class="flex gap-4">
-      <a href="#" class="hover:underline">Syarat & Ketentuan</a>
-      <a href="#" class="hover:underline">Bantuan</a>
-    </div>
-  </footer>
-</body>
-</html>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

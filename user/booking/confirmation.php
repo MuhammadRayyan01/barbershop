@@ -39,16 +39,14 @@ try {
     $pageError = 'Ringkasan reservasi gagal dimuat. Coba kembali ke halaman booking.';
 }
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="<?= $escape($csrfToken) ?>">
-  <title>Konfirmasi Reservasi | Pemon Barbershop</title>
-  <link rel="stylesheet" href="../../assets/css/tailwind.css">
-</head>
-<body class="min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6">
+<?php
+$userPageTitle = 'Konfirmasi Reservasi | Pemon Barbershop';
+$userActivePage = 'confirmation';
+$userBodyClass = 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6 flex flex-col';
+$userShowProfileEdit = false;
+$userPageScripts = ['../../assets/js/confirmation.js'];
+require __DIR__ . '/../includes/header.php';
+?>
   <main class="mx-auto max-w-3xl py-8">
     <p class="text-center text-xs font-semibold uppercase tracking-widest text-gray-500">Langkah 3 dari 4</p>
     <h1 class="mt-2 text-center text-2xl font-extrabold">Konfirmasi Reservasi</h1>
@@ -78,6 +76,4 @@ try {
       </section>
     <?php endif; ?>
   </main>
-  <script src="../../assets/js/confirmation.js" defer></script>
-</body>
-</html>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

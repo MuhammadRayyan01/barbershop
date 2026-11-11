@@ -488,6 +488,10 @@ video {
   left: 0px;
 }
 
+.left-3\.5 {
+  left: 0.875rem;
+}
+
 .left-4 {
   left: 1rem;
 }
@@ -522,6 +526,10 @@ video {
 
 .z-\[60\] {
   z-index: 60;
+}
+
+.order-last {
+  order: 9999;
 }
 
 .col-span-2 {
@@ -1049,6 +1057,12 @@ video {
   margin-bottom: calc(0.25rem * var(--tw-space-y-reverse));
 }
 
+.space-y-1\.5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.375rem * var(--tw-space-y-reverse));
+}
+
 .space-y-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
   margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
@@ -1348,6 +1362,10 @@ video {
   background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
 
+.bg-gray-200\/60 {
+  background-color: rgb(229 231 235 / 0.6);
+}
+
 .bg-gray-400 {
   --tw-bg-opacity: 1;
   background-color: rgb(156 163 175 / var(--tw-bg-opacity, 1));
@@ -1603,8 +1621,16 @@ video {
   padding-left: 2.75rem;
 }
 
+.pl-20 {
+  padding-left: 5rem;
+}
+
 .pl-4 {
   padding-left: 1rem;
+}
+
+.pr-10 {
+  padding-right: 2.5rem;
 }
 
 .pr-11 {
@@ -2066,6 +2092,11 @@ video {
   background-color: rgb(10 46 42 / var(--tw-bg-opacity, 1));
 }
 
+.hover\:bg-\[\#0c261d\]:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(12 38 29 / var(--tw-bg-opacity, 1));
+}
+
 .hover\:bg-emerald-100:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(209 250 229 / var(--tw-bg-opacity, 1));
@@ -2238,6 +2269,10 @@ video {
 }
 
 @media (min-width: 640px) {
+  .sm\:order-none {
+    order: 0;
+  }
+
   .sm\:my-10 {
     margin-top: 2.5rem;
     margin-bottom: 2.5rem;
@@ -2249,6 +2284,13 @@ video {
 
   .sm\:mt-6 {
     margin-top: 1.5rem;
+  }
+
+  .sm\:line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
   }
 
   .sm\:block {
@@ -2287,6 +2329,14 @@ video {
     align-items: center;
   }
 
+  .sm\:justify-start {
+    justify-content: flex-start;
+  }
+
+  .sm\:gap-5 {
+    gap: 1.25rem;
+  }
+
   .sm\:gap-8 {
     gap: 2rem;
   }
@@ -2297,6 +2347,10 @@ video {
 
   .sm\:rounded-2xl {
     border-radius: 1rem;
+  }
+
+  .sm\:border-0 {
+    border-width: 0px;
   }
 
   .sm\:p-5 {
@@ -2328,6 +2382,10 @@ video {
   .sm\:py-8 {
     padding-top: 2rem;
     padding-bottom: 2rem;
+  }
+
+  .sm\:pt-0 {
+    padding-top: 0px;
   }
 
   .sm\:text-3xl {

@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const csrfToken = document.querySelector(
     'meta[name="csrf-token"]')?.content;
 
-  if(!accountBtn || !accountMenu || !accountModal || !accountForm){
-    console.error('Dashboard account elements are missing');
+  if(!dashboardName || !accountModal || !accountForm){
+    console.error('Dashboard profile elements are missing');
     return;
   }
 
@@ -90,17 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  accountBtn.addEventListener('click', (event)=> {
-    event.stopPropagation();
-    accountMenu.classList.toggle('hidden');
-  });
-
-  document.addEventListener('click',(event) => {
-    if(!accountMenu.contains(event.target) && !accountBtn.contains(event.target)){
-      accountMenu.classList.add('hidden');
-    }
-  });
-
   function openProfileModel(){
     if(!customer){
       return;
@@ -113,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     accountError.textContent = '';
     accountError.classList.add('hidden');
 
-    accountMenu.classList.add('hidden');
+    accountMenu?.classList.add('hidden');
 
     accountModal.classList.remove('hidden');
     accountModal.classList.add('flex');
@@ -124,11 +113,11 @@ function closeProfileModal(){
     accountModal.classList.remove('flex');
 }
 
-  accountBtn?.addEventListener('click', openProfileModel);
+  accountEditBtn?.addEventListener('click', openProfileModel);
   accountCancelBtn?.addEventListener('click', closeProfileModal);
 
   accountModal.addEventListener('click', (event) => {
-    if (event.target === accountBtn){
+    if (event.target === accountModal){
       closeProfileModal();
     }
   });
@@ -212,4 +201,5 @@ function closeProfileModal(){
     accountError.classList.remove('hidden');
   }
 
-}); 
+  loadProfile();
+});
