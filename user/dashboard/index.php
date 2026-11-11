@@ -57,7 +57,7 @@ $csrfToken = getCsrfToken();
         </div>
         <button id="akun-edit-btn" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Edit Profil</button>
         <a href="../dashboard/schedule.html" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
-        <a href="../../backend/auth/logout.php" class="block px-4 py-2 text-red-600 hover:bg-red-50">Keluar</a>
+        <a href="../../backend/auth/logout.php" id="logout-btn" class="block px-4 py-2 text-red-600 hover:bg-red-50">Keluar</a>
       </div>
     </div>
   </header>
