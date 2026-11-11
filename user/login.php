@@ -195,7 +195,7 @@ if (isset($_SESSION['user_id'])) {
                 Belum punya akun?
 
                 <a
-                    href="register.html"
+                    href="register.php"
                     class="font-bold text-slate-900 hover:text-[#0d3b36]"
                 >
                     Daftar sekarang
