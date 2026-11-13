@@ -2,8 +2,8 @@
 $host = 'localhost';
 $port = '5432';
 $dbname = 'barber_shop';
-$username = 'postgres';
-$password = 'rayyan01';
+$username = 'ashfaq';
+$password = 'ashfaq123';
 
 try{
     $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";

@@ -44,6 +44,9 @@ $isProduction = filter_var(
     getenv('MIDTRANS_IS_PRODUCTION') ?: 'false',
     FILTER_VALIDATE_BOOLEAN
 );
+$snapRedirectBase = $isProduction
+    ? 'https://app.midtrans.com/snap/v2/vtweb/'
+    : 'https://app.sandbox.midtrans.com/snap/v2/vtweb/';
 
 if (!$serverKey || trim($serverKey) === '') {
     jsonResponse(503, [
@@ -286,13 +289,15 @@ if (
             && !empty($payment['snap_token'])
         ) {
             $connection->commit();
+            unset($_SESSION['booking_draft']);
 
             jsonResponse(200, [
                 'success' => true,
                 'message' => 'Reusing the existing checkout.',
                 'reservation_id' => (int) $reservationId,
                 'amount' => (int) round($amount),
-                'snap_token' => $payment['snap_token']
+                'snap_token' => $payment['snap_token'],
+                'redirect_url' => $snapRedirectBase . rawurlencode($payment['snap_token']),
             ]);
         }
 
@@ -381,6 +386,13 @@ if (
             'duration' => 1
         ]
     ];
+
+    $applicationBaseUrl = rtrim((string) (getenv('APP_BASE_URL') ?: ''), '/');
+    if ($applicationBaseUrl !== '' && filter_var($applicationBaseUrl, FILTER_VALIDATE_URL)) {
+        $payload['callbacks'] = [
+            'finish' => $applicationBaseUrl . '/user/booking/success.php?reservation_id=' . $reservationId,
+        ];
+    }
 
     // Initialize cURL
     $curl = curl_init($endpoint);
@@ -473,6 +485,7 @@ if (
     }
 
     $connection->commit();
+    unset($_SESSION['booking_draft']);
 
     // Successful response
     jsonResponse(201, [
@@ -482,7 +495,7 @@ if (
         'order_id' => $orderId,
         'amount' => (int) round($amount),
         'snap_token' => $gatewayResponse['token'],
-        'redirect_url' => $gatewayResponse['redirect_url'] ?? null
+        'redirect_url' => $gatewayResponse['redirect_url'] ?? ($snapRedirectBase . rawurlencode($gatewayResponse['token']))
     ]);
 
 } catch (Throwable $exception) {

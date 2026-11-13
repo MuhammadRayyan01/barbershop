@@ -69,6 +69,7 @@ require __DIR__ . '/../includes/header.php';
         <form id="confirmation-form" class="mt-6 flex flex-col-reverse justify-between gap-3 sm:flex-row">
           <input type="hidden" id="confirm-service-id" value="<?= (int) $draft['service_id'] ?>">
           <input type="hidden" id="confirm-slot-id" value="<?= (int) $draft['slot_id'] ?>">
+          <input type="hidden" id="confirm-reservation-id" value="<?= (int) ($draft['reservation_id'] ?? 0) ?>">
           <a href="booking.php" class="rounded-xl border border-gray-300 px-5 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50">Kembali ubah jadwal</a>
           <button id="confirm-submit" type="submit" class="rounded-xl bg-[#0d3b36] px-5 py-3 text-sm font-bold text-white hover:bg-[#082724]">Konfirmasi &amp; Lanjut ke Pembayaran</button>
         </form>
