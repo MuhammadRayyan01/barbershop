@@ -74,59 +74,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $pageError === '') {
     }
 }
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-        }
-    </style>
-    <title>Pemon Barbershop</title>
-
-    <!-- Tailwind CSS via CDN -->
-    <link rel="stylesheet" href="../../assets/css/tailwind.css">
-</head>
-<body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
-
-  <!-- Header / Navbar -->
-  <header class="max-w-5xl w-full mx-auto flex justify-between items-center py-4">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-[#0d3b36] text-white flex items-center justify-center rounded-lg font-bold text-xl">P</div>
-      <span class="font-bold tracking-wide">PEMON <br><span class="text-xs font-normal text-gray-500">BARBERSHOP</span></span>
-    </div>
-    <nav class="hidden md:flex gap-6 font-medium text-sm">
-        <ul>
-            <li>
-                <a href="../dashboard/index.php" class="text-gray-600 hover:text-black">Dashboard</a>
-                <a href="../dashboard/schedule.php" class="text-gray-600 hover:text-black">Schedule</a>
-                <a href="../dashboard/aboutUs.html" class="text-gray-600 hover:text-black">About us</a>
-            </li>
-        </ul>
-    </nav>
-    <!-- Tombol Akun -->
-    <div class="relative">
-      <button id="akun-btn" class="flex items-center gap-2">
-        <span class="w-10 h-10 bg-[#0d3b36] text-white rounded-full flex items-center justify-center font-bold">R</span>
-        <span class="hidden sm:block text-sm font-medium">Akun</span>
-      </button>
-      <div id="akun-menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 z-40 text-sm">
-        <div class="p-4 border-b border-gray-100">
-          <p class="font-bold">Halo, <span id="akun-nama-depan"></span></p>
-          <p id="akun-nama" class="text-xs text-gray-500 mt-1"></p>
-          <p id="akun-hp" class="text-xs text-gray-500"></p>
-          <p id="akun-email" class="text-xs text-gray-500"></p>
-        </div>
-        <button id="akun-edit-btn" class="block w-full text-left px-4 py-2 hover:bg-gray-50">Edit Profil</button>
-        <a href="../dashboard/schedule.php" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
-        <form method="post" action="../../backend/auth/logout.php"><button type="submit" class="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50">Keluar</button></form>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-6xl w-full mx-auto my-6 space-y-6">
+<?php
+$userPageTitle = 'Booking | Pemon Barbershop';
+$userActivePage = 'booking';
+$userBodyClass = 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6 flex flex-col';
+$userShowProfileEdit = false;
+$userPageScripts = ['../../assets/js/booking-availability.js'];
+require __DIR__ . '/../includes/header.php';
+?>
+<main class="max-w-6xl w-full mx-auto my-6 space-y-6">
 
     <!-- Stepper / Indikator Langkah -->
     <div class="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium px-2">
@@ -206,44 +162,4 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $pageError === '') {
 
     </div>
   </main>
-
-  <footer class="max-w-6xl w-full mx-auto text-[11px] text-gray-400 flex flex-col md:flex-row justify-between items-center py-6 border-t border-gray-200/60 mt-8 gap-2">
-    <p>© 2025 Pemon Barbershop. All rights reserved.</p>
-    <div class="flex gap-4">
-      <a href="#" class="hover:underline">Syarat & Ketentuan</a>
-      <a href="#" class="hover:underline">Bantuan</a>
-    </div>
-  </footer>
-
-  <!-- File JavaScript Eksternal -->
-  <!-- Pop-up Edit Profil -->
-  <div id="akun-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
-    <form id="akun-form" class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 text-[#0d3b36]">
-      <h2 class="text-lg font-bold">Edit Data Profil</h2>
-      <div>
-        <label class="text-sm font-semibold">Nama Lengkap</label>
-        <input id="akun-input-nama" type="text" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-sm font-semibold">Nomor Handphone / WhatsApp</label>
-        <input id="akun-input-hp" type="tel" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-sm font-semibold">Email</label>
-        <input id="akun-input-email" type="email" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-sm font-semibold">Password Baru <span class="font-normal text-gray-400">(opsional)</span></label>
-        <input id="akun-input-password" type="password" placeholder="Biarkan kosong jika tidak diubah" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-      </div>
-      <p id="akun-error" class="hidden text-sm text-red-600"></p>
-      <div class="flex justify-end gap-2">
-        <button type="button" id="akun-batal" class="px-4 py-2 text-sm font-semibold">Batal</button>
-        <button type="submit" class="px-4 py-2 rounded-lg bg-[#0d3b36] text-white text-sm font-semibold">Simpan Perubahan</button>
-      </div>
-    </form>
-  </div>
-  <script src="../../assets/js/app.js"></script>
-  <script src="../../assets/js/booking-availability.js"></script>
-</body>
-</html>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

@@ -156,18 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    accountBtn.addEventListener('click', (event) => {
-
-        event.stopPropagation();
-
-        const isHidden = accountMenu.classList.toggle('hidden');
-
-        accountBtn.setAttribute(
-            'aria-expanded',
-            String(!isHidden)
-        );
-    });
-
     document.addEventListener('click', (event) => {
 
         if (

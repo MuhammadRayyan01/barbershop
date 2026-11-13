@@ -102,6 +102,42 @@ if (
 }
 
 try {
+    $draftReservationId = $_SESSION['booking_draft']['reservation_id'] ?? null;
+    $bookingDraft = $_SESSION['booking_draft'] ?? [];
+
+    if (
+        is_int($draftReservationId) &&
+        ($bookingDraft['service_id'] ?? null) === $serviceId &&
+        ($bookingDraft['slot_id'] ?? null) === $slotId
+    ) {
+        $existingStmt = $pdo->prepare("SELECT reservation_id, slot_id, service_id,
+                service_price, additional_service_id, additional_service_price,
+                reservation_status, created_at
+            FROM reservation
+            WHERE reservation_id = :reservation_id
+              AND user_id = :user_id
+              AND slot_id = :slot_id
+              AND service_id = :service_id
+              AND reservation_status = 'active'");
+        $existingStmt->execute([
+            'reservation_id' => $draftReservationId,
+            'user_id' => $authenticatedUserId,
+            'slot_id' => $slotId,
+            'service_id' => $serviceId,
+        ]);
+        $existingReservation = $existingStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existingReservation) {
+            jsonResponse(200, [
+                'success' => true,
+                'message' => 'Using the existing reservation.',
+                'data' => ['reservation' => $existingReservation],
+            ]);
+        }
+
+        unset($_SESSION['booking_draft']['reservation_id']);
+    }
+
     $pdo->beginTransaction();
 
     $slotStmt = $pdo->prepare("
@@ -310,7 +346,7 @@ $invoiceStmt->execute([
 $invoice = $invoiceStmt->fetch(PDO::FETCH_ASSOC);
 
     $pdo->commit();
-    unset($_SESSION['booking_draft']);
+    $_SESSION['booking_draft']['reservation_id'] = (int) $reservation['reservation_id'];
 
     jsonResponse(201, [
         'success' => true,

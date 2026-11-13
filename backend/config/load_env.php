@@ -4,7 +4,7 @@ declare(strict_types=1);
 $envFile = dirname(__DIR__, 2) . '/.env';
 
 if (!file_exists($envFile)) {
-    throw new RuntimeException('.env file not found.');
+    return;
 }
 
 $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

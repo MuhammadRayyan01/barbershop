@@ -101,6 +101,7 @@ create table if not exists payment(
         amount decimal(10, 2) not null,
         payment_proof_url varchar(255),
         transaction_reference varchar(255),
+        snap_token varchar(255),
         created_at timestamp default current_timestamp not null,
         updated_at timestamp default current_timestamp not null,
 
