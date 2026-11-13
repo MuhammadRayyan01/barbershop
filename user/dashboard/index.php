@@ -34,6 +34,11 @@ $csrfToken = getCsrfToken();
             font-family: Arial, sans-serif;
         }
     </style>
+
+    <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0"
+    rel="stylesheet"
+/>
 </head>
 
 <body class="bg-[#f4f7f5] text-[#0d3b36] font-sans min-h-screen flex flex-col justify-between p-6">
@@ -198,8 +203,8 @@ $csrfToken = getCsrfToken();
 
                 <div class="space-y-1">
 
-                    <span aria-hidden="true" class="text-lg">
-                        ▦
+                    <span class="material-symbols-rounded text-3xl text-green-600">
+                        calendar_month
                     </span>
 
                     <p
@@ -218,9 +223,9 @@ $csrfToken = getCsrfToken();
 
                 <div class="space-y-1">
 
-                    <span aria-hidden="true" class="text-lg">
-                        ▤
-                    </span>
+                <span class="material-symbols-rounded text-3xl text-amber-500">
+                    payments
+                </span>
 
                     <p
                         id="jumlah-pembayaran"
@@ -321,7 +326,7 @@ $csrfToken = getCsrfToken();
             </div>
 
             <a
-                href="../booking/booking.html"
+                href="../booking/booking.php"
                 class="bg-[#0d3b36] hover:bg-[#082724] text-white font-semibold text-sm px-6 py-3 rounded-xl transition flex items-center gap-2"
             >
                 Mulai Reservasi Sekarang
