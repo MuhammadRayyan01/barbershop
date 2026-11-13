@@ -108,8 +108,16 @@ require __DIR__ . '/../includes/header.php';
         <input id="akun-input-email" type="email" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
       </div>
       <div>
-        <label class="text-sm font-semibold">Password Baru <span class="font-normal text-gray-400">(opsional)</span></label>
-        <input id="akun-input-password" type="password" placeholder="Biarkan kosong jika tidak diubah" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+        <label for="akun-input-current-password" class="text-sm font-semibold">Password Saat Ini</label>
+        <input id="akun-input-current-password" type="password" autocomplete="current-password" placeholder="Masukkan password saat ini" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label for="akun-input-password" class="text-sm font-semibold">Password Baru <span class="font-normal text-gray-400">(opsional)</span></label>
+        <input id="akun-input-password" type="password" autocomplete="new-password" minlength="13" maxlength="72" placeholder="13–72 karakter" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label for="akun-input-confirm-password" class="text-sm font-semibold">Konfirmasi Password Baru</label>
+        <input id="akun-input-confirm-password" type="password" autocomplete="new-password" minlength="13" maxlength="72" placeholder="Masukkan ulang password baru" class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
       </div>
       <p id="akun-error" class="hidden text-sm text-red-600"></p>
       <div class="flex justify-end gap-2">
