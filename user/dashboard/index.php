@@ -335,7 +335,7 @@ $csrfToken = getCsrfToken();
 
         </div>
 
-    </main>
+    </main> 
 
 
     <!-- Edit Profile Modal -->
