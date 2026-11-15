@@ -1,3 +1,4 @@
+
 'use strict';
 
 (() => {
@@ -12,7 +13,7 @@
     const CONFIRMATION_ENDPOINT = '../../backend/api/confirmation.php';
     const PAYMENT_ENDPOINT = '../../backend/api/create_payment.php';
 
-    let reservationId = null;
+    let holdToken = null;
 
     // -----------------------------------------------
     // Format currency
@@ -38,7 +39,7 @@
     }
 
     // -----------------------------------------------
-    // Display error
+    // Display messages
     // -----------------------------------------------
 
     function showError(text) {
@@ -50,8 +51,20 @@
             'mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700';
     }
 
+    function showPaymentMessage(text, type = 'info') {
+        message.textContent = text;
+
+        const styles = {
+            info: 'mt-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700',
+            success: 'mt-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700',
+            error: 'mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700'
+        };
+
+        message.className = styles[type] || styles.info;
+    }
+
     // -----------------------------------------------
-    // Load reservation details
+    // Load confirmation details from active hold
     // -----------------------------------------------
 
     async function loadConfirmation() {
@@ -69,16 +82,18 @@
 
             if (!response.ok || !result.success) {
                 throw new Error(
-                    result.message || 'Gagal memuat detail reservasi.'
+                    result.message || 'Gagal memuat detail booking.'
                 );
             }
 
             const data = result.data;
 
-            reservationId = Number(data.reservation_id);
+            // The new implementation uses hold_token,
+            // not reservation_id.
+            holdToken = data.hold_token;
 
-            if (!reservationId) {
-                throw new Error('ID reservasi tidak valid.');
+            if (!holdToken) {
+                throw new Error('Token booking tidak valid.');
             }
 
             document.getElementById('confirm-service-name').textContent =
@@ -121,6 +136,7 @@
                 'X-CSRF-TOKEN': csrfToken
             },
             credentials: 'same-origin',
+            cache: 'no-store',
             body: JSON.stringify(data)
         });
 
@@ -136,85 +152,207 @@
     }
 
     // -----------------------------------------------
-    // Validate Midtrans redirect URL
+    // Load Midtrans Snap JavaScript
     // -----------------------------------------------
 
-    function getMidtransRedirect(value) {
-        if (typeof value !== 'string') {
-            throw new Error('URL pembayaran Midtrans tidak diterima.');
-        }
+    function loadMidtransSnap(snapUrl, clientKey) {
+        return new Promise((resolve, reject) => {
+            try {
+                const url = new URL(snapUrl);
 
-        const url = new URL(value);
+                const allowedHosts = [
+                    'app.midtrans.com',
+                    'app.sandbox.midtrans.com'
+                ];
 
-        const allowedHosts = [
-            'app.midtrans.com',
-            'app.sandbox.midtrans.com'
-        ];
+                if (
+                    url.protocol !== 'https:' ||
+                    !allowedHosts.includes(url.hostname)
+                ) {
+                    throw new Error('URL Midtrans tidak valid.');
+                }
 
-        if (
-            url.protocol !== 'https:' ||
-            !allowedHosts.includes(url.hostname)
-        ) {
-            throw new Error('URL pembayaran Midtrans tidak valid.');
-        }
+                url.searchParams.set('client-key', clientKey);
 
-        return url.href;
+                // Reuse Snap if it has already been loaded.
+                if (window.snap) {
+                    resolve();
+                    return;
+                }
+
+                const existingScript = document.querySelector(
+                    'script[data-midtrans-snap]'
+                );
+
+                if (existingScript) {
+                    existingScript.addEventListener('load', resolve, {
+                        once: true
+                    });
+
+                    existingScript.addEventListener(
+                        'error',
+                        () => reject(
+                            new Error('Gagal memuat Midtrans Snap.')
+                        ),
+                        { once: true }
+                    );
+
+                    return;
+                }
+
+                const script = document.createElement('script');
+
+                script.src = url.href;
+                script.async = true;
+                script.dataset.midtransSnap = 'true';
+
+                script.onload = resolve;
+
+                script.onerror = () => {
+                    reject(
+                        new Error('Gagal memuat Midtrans Snap.')
+                    );
+                };
+
+                document.head.appendChild(script);
+
+            } catch (error) {
+                reject(error);
+            }
+        });
     }
 
     // -----------------------------------------------
-    // Confirm and create payment
+    // Confirm and create Midtrans payment
     // -----------------------------------------------
 
     confirmationForm.addEventListener('submit', async event => {
         event.preventDefault();
 
-        if (!reservationId) {
-            showError('Detail reservasi belum tersedia. Muat ulang halaman.');
+        if (!holdToken) {
+            showPaymentMessage(
+                'Booking tidak ditemukan. Silakan muat ulang halaman.',
+                'error'
+            );
             return;
         }
 
         const csrfToken = confirmationForm.dataset.csrfToken;
 
         if (!csrfToken) {
-            showError('Sesi formulir berakhir. Muat ulang halaman.');
+            showPaymentMessage(
+                'Sesi formulir berakhir. Muat ulang halaman.',
+                'error'
+            );
             return;
         }
 
         button.disabled = true;
-        button.textContent = 'Menghubungkan ke Midtrans...';
+        button.textContent = 'Menyiapkan pembayaran...';
 
         message.classList.add('hidden');
 
         try {
+            // Ask our backend to create a Snap transaction.
             const checkout = await postJson(
                 PAYMENT_ENDPOINT,
                 {
-                    reservation_id: reservationId
+                    hold_token: holdToken
                 },
                 csrfToken
             );
 
-            const redirectUrl = getMidtransRedirect(
-                checkout.redirect_url
+            const payment = checkout.data;
+
+            if (
+                !payment ||
+                !payment.snap_token ||
+                !payment.client_key ||
+                !payment.snap_url
+            ) {
+                throw new Error(
+                    'Informasi pembayaran Midtrans tidak lengkap.'
+                );
+            }
+
+            // Load Midtrans Snap.
+            await loadMidtransSnap(
+                payment.snap_url,
+                payment.client_key
             );
 
-            window.location.assign(redirectUrl);
+            if (!window.snap) {
+                throw new Error('Midtrans Snap belum berhasil dimuat.');
+            }
+
+            button.textContent = 'Menunggu pembayaran...';
+
+            // Open Midtrans payment popup.
+            window.snap.pay(payment.snap_token, {
+                onSuccess: function (result) {
+                    console.log('Midtrans success callback:', result);
+
+                    showPaymentMessage(
+                        'Pembayaran diterima. Backend sedang memverifikasi pembayaran Anda.',
+                        'success'
+                    );
+
+                    button.disabled = true;
+                    button.textContent = 'Memverifikasi pembayaran...';
+                },
+
+                onPending: function (result) {
+                    console.log('Midtrans pending callback:', result);
+
+                    showPaymentMessage(
+                        'Pembayaran sedang menunggu penyelesaian. Silakan ikuti instruksi Midtrans.',
+                        'info'
+                    );
+
+                    button.disabled = false;
+                    button.textContent = 'Coba periksa pembayaran';
+                },
+
+                onError: function (result) {
+                    console.error('Midtrans error callback:', result);
+
+                    showPaymentMessage(
+                        'Pembayaran belum berhasil. Silakan coba lagi.',
+                        'error'
+                    );
+
+                    button.disabled = false;
+                    button.textContent = 'Coba pembayaran lagi';
+                },
+
+                onClose: function () {
+                    showPaymentMessage(
+                        'Jendela pembayaran ditutup. Booking Anda masih mengikuti waktu berlaku hold.',
+                        'info'
+                    );
+
+                    button.disabled = false;
+                    button.textContent = 'Lanjutkan Pembayaran';
+                }
+            });
 
         } catch (error) {
             console.error('Payment preparation error:', error);
 
-            message.textContent =
-                error.message || 'Pembayaran gagal disiapkan. Coba lagi.';
-
-            message.className =
-                'mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700';
+            showPaymentMessage(
+                error.message || 'Pembayaran gagal disiapkan. Coba lagi.',
+                'error'
+            );
 
             button.disabled = false;
             button.textContent = 'Coba pembayaran lagi';
         }
     });
 
-    // Load confirmation when page opens.
+    // -----------------------------------------------
+    // Load confirmation when page opens
+    // -----------------------------------------------
+
     loadConfirmation();
 
 })();
