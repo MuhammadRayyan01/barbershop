@@ -36,73 +36,97 @@ if (!$userId || $userId < 1) {
     ]);
 }
 
-// Get the reservation ID created by booking.php API.
-$reservationId = filter_var(
-    $_SESSION['last_reservation_id'] ?? null,
-    FILTER_VALIDATE_INT
-);
-
-if (!$reservationId || $reservationId < 1) {
-    confirmationResponse(404, [
-        'success' => false,
-        'message' => 'No reservation found. Please make a booking first.'
-    ]);
-}
-
 try {
+    /*
+     * Retrieve the customer's active temporary booking hold.
+     *
+     * We do not retrieve a permanent reservation here.
+     * A permanent reservation is created only after
+     * successful payment verification.
+     */
     $stmt = $pdo->prepare("
         SELECT
-            r.reservation_id,
-            r.reservation_status,
-            r.service_price,
+            bh.hold_id,
+            bh.hold_token,
+            bh.service_id,
+            bh.service_price,
+            bh.additional_service_id,
+            bh.additional_service_price,
+            bh.total_amount,
+            bh.hold_status,
+            bh.expires_at,
+
             s.service_name,
+
             ts.slot_date,
             ts.start_time,
             ts.end_time,
-            i.customer_name,
-            i.phone_number,
-            i.total_payment,
-            i.payment_status
-        FROM reservation r
+
+            u.full_name AS customer_name,
+            u.phone_number
+
+        FROM booking_hold bh
+
         INNER JOIN service s
-            ON s.service_id = r.service_id
+            ON s.service_id = bh.service_id
+
         INNER JOIN time_slot ts
-            ON ts.slot_id = r.slot_id
-        INNER JOIN invoice i
-            ON i.reservation_id = r.reservation_id
-        WHERE r.reservation_id = :reservation_id
-          AND r.user_id = :user_id
+            ON ts.slot_id = bh.slot_id
+
+        INNER JOIN users u
+            ON u.user_id = bh.user_id
+
+        WHERE bh.user_id = :user_id
+          AND bh.hold_status = 'active'
+          AND bh.expires_at > CURRENT_TIMESTAMP
+
+        ORDER BY bh.created_at DESC
+
         LIMIT 1
     ");
 
     $stmt->execute([
-        'reservation_id' => $reservationId,
         'user_id' => $userId
     ]);
 
-    $reservation = $stmt->fetch(PDO::FETCH_ASSOC);
+    $hold = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$reservation) {
+    if (!$hold) {
         confirmationResponse(404, [
             'success' => false,
-            'message' => 'Reservation not found.'
+            'message' => 'Your booking session has expired or no active booking was found. Please select your booking again.'
         ]);
     }
 
     confirmationResponse(200, [
         'success' => true,
         'data' => [
-            'reservation_id' => (int) $reservation['reservation_id'],
-            'reservation_status' => $reservation['reservation_status'],
-            'service_name' => $reservation['service_name'],
-            'customer_name' => $reservation['customer_name'],
-            'phone_number' => $reservation['phone_number'],
-            'slot_date' => $reservation['slot_date'],
-            'start_time' => $reservation['start_time'],
-            'end_time' => $reservation['end_time'],
-            'service_price' => (float) $reservation['service_price'],
-            'total_payment' => (float) $reservation['total_payment'],
-            'payment_status' => $reservation['payment_status']
+            'hold_id' => (int) $hold['hold_id'],
+            'hold_token' => $hold['hold_token'],
+
+            'hold_status' => $hold['hold_status'],
+            'expires_at' => $hold['expires_at'],
+
+            'service_id' => (int) $hold['service_id'],
+            'service_name' => $hold['service_name'],
+            'service_price' => (float) $hold['service_price'],
+
+            'additional_service_id' => $hold['additional_service_id'] !== null
+                ? (int) $hold['additional_service_id']
+                : null,
+
+            'additional_service_price' => $hold['additional_service_price'] !== null
+                ? (float) $hold['additional_service_price']
+                : null,
+
+            'customer_name' => $hold['customer_name'],
+            'phone_number' => $hold['phone_number'],
+
+            'slot_date' => $hold['slot_date'],
+            'start_time' => $hold['start_time'],
+            'end_time' => $hold['end_time'],
+
+            'total_payment' => (float) $hold['total_amount']
         ]
     ]);
 
@@ -111,6 +135,6 @@ try {
 
     confirmationResponse(500, [
         'success' => false,
-        'message' => 'Unable to load reservation details.'
+        'message' => 'Unable to load booking details.'
     ]);
 }
