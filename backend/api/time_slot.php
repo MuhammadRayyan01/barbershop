@@ -3,19 +3,16 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
+require_once __DIR__ . '/../config/booking.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     header('Allow: GET');
-
-    jsonResponse(405, [
-        'success' => false,
-        'message' => 'Method not allowed.'
-    ]);
+    jsonResponse(405, ['success' => false, 'message' => 'Method not allowed.']);
 }
 
-$date = isset($_GET['date']) && is_string($_GET['date'])
-    ? trim($_GET['date'])
-    : '';
+$date = $_GET['date'] ?? '';
+$timezone = new DateTimeZone('Asia/Jakarta');
+$requestedDate = is_string($date) ? DateTimeImmutable::createFromFormat('!Y-m-d', $date, $timezone) : false;
 
 if ($date === '') {
     jsonResponse(422, ['success' => false, 'message' => 'A valid date is required.']);
@@ -61,7 +58,7 @@ try{
             'booked_count' => $bookedCount,
             'capacity' => BOOKING_SLOT_CAPACITY,
             'remaining_capacity' => $remainingCapacity,
-            'is_full' => $bookedCount >= BOOKING_SLOT_CAPACITY,
+            'is_full' => $remainingCapacity === 0,
         ];
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 

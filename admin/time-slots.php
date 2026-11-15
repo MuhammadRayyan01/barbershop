@@ -42,6 +42,10 @@ if ($requestMethod === 'POST') {
 }
 
 try {
+    if ($date >= $today->format('Y-m-d')) {
+        ensureTimeSlotsForDate($pdo, $date);
+    }
+
     $stmt = $pdo->prepare("SELECT ts.slot_id, ts.slot_date, ts.start_time, ts.end_time, ts.is_available, COUNT(r.reservation_id) FILTER (WHERE r.reservation_status = 'active') AS booked_count FROM time_slot ts LEFT JOIN reservation r ON r.slot_id = ts.slot_id WHERE ts.slot_date = CAST(:date AS date) GROUP BY ts.slot_id ORDER BY ts.start_time");
     $stmt->execute(['date' => $date]);
     $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -61,7 +65,7 @@ $adminPageScript = '../assets/js/admin-slots.js';
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl sm:text-3xl font-extrabold">Date Time Slot</h1>
-        <p class="text-sm text-slate-500 mt-1">Buka atau tutup slot waktu untuk reservasi.</p>
+        <p class="text-sm text-slate-500 mt-1">Slot 30 menit dari pukul 10.00 hingga 22.00 dibuat otomatis untuk tanggal yang dipilih.</p>
       </div>
       <form method="get" action="time-slots.php" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm text-sm font-semibold">
         <span class="material-symbols-outlined text-slate-500">calendar_month</span><label for="slot-date">Tanggal</label>

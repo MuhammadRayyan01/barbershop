@@ -6,9 +6,9 @@ require_once __DIR__ . '/../../backend/config/csrf.php';
 
 $userId = $_SESSION['user_id'] ?? null;
 
-if (!is_int($userId) || $userId < 1) {
-    header('Location: /user/login.php');
-    exit;
+if(!is_int($userId) || $userId < 1){
+  header('Location: /user/login.php');
+  exit;
 }
 
 $csrfToken = getCsrfToken();
