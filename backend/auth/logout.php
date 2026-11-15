@@ -2,36 +2,32 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../config/csrf.php';
 
-header('Content-Type: application/json; charset=utf-8');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    header('Allow: POST');
+    http_response_code(405);
+    exit('Method not allowed.');
+}
 
-function respond(int $status, array $data): never {
-    http_response_code($status);
-    echo json_encode($data);
+// Do not cache the logout response.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+// Already logged out (for example the session expired in another tab): just go to login.
+if (!isset($_SESSION['user_id'])) {
+    header('Location: /user/login.php', true, 303);
     exit;
 }
 
-// Only allow POST requests
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Allow: POST');
-    respond(405, [
-        'success' => false,
-        'message' => 'Method not allowed.'
-    ]);
-}
+// The logout form in includes/header.php sends the token as the "csrf_token" field.
+$submittedToken = $_POST['csrf_token'] ?? '';
+requireValidCsrfToken(is_string($submittedToken) ? $submittedToken : '');
 
-// Check whether the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    respond(401, [
-        'success' => false,
-        'message' => 'You are not logged in.'
-    ]);
-}
-
-// Clear session data
+// Clear all session data.
 $_SESSION = [];
 
-// Delete session cookie
+// Remove the session cookie.
 if (ini_get('session.use_cookies')) {
     $cookieParams = session_get_cookie_params();
 
@@ -45,10 +41,9 @@ if (ini_get('session.use_cookies')) {
     ]);
 }
 
-// Destroy session
+// Destroy the session.
 session_destroy();
 
-respond(200, [
-    'success' => true,
-    'message' => 'Logout successful.'
-]);
+// Redirect to login (correct when the site root is the project folder: php -S localhost:8080).
+header('Location: /user/login.php', true, 303);
+exit;

@@ -75,29 +75,15 @@ $availableTimeCount = static function (array $daySlots): int {
         && (int) $slot['booked_count'] < BOOKING_SLOT_CAPACITY
     ));
 };
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jadwal Reservasi | Pemon Barbershop</title>
-  <link rel="stylesheet" href="../../assets/css/tailwind.css">
-</head>
-<body class="min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6">
-  <header class="mx-auto flex w-full max-w-6xl items-center justify-between py-4">
-    <a href="index.html" class="flex items-center gap-3" aria-label="Dashboard Pemon Barbershop">
-      <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0d3b36] text-xl font-bold text-white">P</span>
-      <span class="font-bold tracking-wide">PEMON <span class="block text-xs font-normal text-gray-500">BARBERSHOP</span></span>
-    </a>
-    <nav class="flex gap-5 text-sm font-medium" aria-label="Navigasi utama">
-      <a href="index.html" class="text-gray-600 hover:text-[#0d3b36]">Dashboard</a>
-      <a href="schedule.php" aria-current="page" class="font-semibold text-[#0d3b36]">Jadwal</a>
-      <a href="aboutUs.html" class="text-gray-600 hover:text-[#0d3b36]">Tentang</a>
-    </nav>
-    <a href="../booking/booking.html" class="rounded-xl bg-[#0d3b36] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
-  </header>
 
+// Page-specific settings used by includes/header.php and includes/footer.php
+$userPageTitle = 'Jadwal Reservasi | Pemon Barbershop';
+$userActivePage = 'schedule';
+$userAssetPrefix = '../../';
+$userBodyClass = 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6 flex flex-col';
+
+require_once __DIR__ . '/../../includes/header.php';
+?>
   <main class="mx-auto w-full max-w-6xl py-6">
     <div class="mb-6">
       <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Pemon Barbershop</p>
@@ -182,16 +168,11 @@ $availableTimeCount = static function (array $daySlots): int {
             <?php endforeach; ?>
           </div>
           <?php if ($availableTimeCount($slots) > 0): ?>
-            <a href="../booking/booking.html" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#0d3b36] px-4 py-3 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
+            <a href="../booking/booking.php" class="mt-5 inline-flex w-full justify-center rounded-xl bg-[#0d3b36] px-4 py-3 text-sm font-semibold text-white hover:bg-[#082724]">Buat Reservasi</a>
           <?php endif; ?>
         <?php endif; ?>
       </div>
     </section>
   </main>
 
-  <footer class="mx-auto flex w-full max-w-6xl justify-between py-5 text-xs text-gray-400">
-    <span>© 2026 Pemon Barbershop</span>
-    <span>Waktu Indonesia Barat (WIB)</span>
-  </footer>
-</body>
-</html>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
