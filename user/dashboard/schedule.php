@@ -75,16 +75,16 @@ $availableTimeCount = static function (array $daySlots): int {
         && (int) $slot['booked_count'] < BOOKING_SLOT_CAPACITY
     ));
 };
-?>
-<?php
+
+// Page-specific settings used by includes/header.php and includes/footer.php
 $userPageTitle = 'Jadwal Reservasi | Pemon Barbershop';
 $userActivePage = 'schedule';
+$userAssetPrefix = '../../';
 $userBodyClass = 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6 flex flex-col';
-$userShowProfileEdit = false;
-$userPageScripts = [];
-require __DIR__ . '/../includes/header.php';
+
+require_once __DIR__ . '/../../includes/header.php';
 ?>
-<main class="mx-auto w-full max-w-6xl py-6">
+  <main class="mx-auto w-full max-w-6xl py-6">
     <div class="mb-6">
       <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Pemon Barbershop</p>
       <h1 class="mt-1 text-2xl font-extrabold sm:text-3xl">Ketersediaan Reservasi</h1>
@@ -174,4 +174,5 @@ require __DIR__ . '/../includes/header.php';
       </div>
     </section>
   </main>
-<?php require __DIR__ . '/../includes/footer.php'; ?>
+
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

@@ -146,90 +146,278 @@ function selectPayment(element) {
 }
 
 // ============================================================
-// AKUN: tombol akun + pop-up edit profil (dipakai semua halaman user)
+// AKUN: dipakai SEMUA halaman pelanggan lewat includes/header.php
+// - dropdown akun
+// - data profil dari backend/api/profile.php
+// - pop-up Edit Profil (nama, HP, email, ganti password)
+// - pop-up konfirmasi Keluar (logout memakai <form method="post"> biasa)
+// Dibungkus IIFE supaya tidak bentrok dengan variabel di file JS lain.
 // ============================================================
+(() => {
+  'use strict';
 
-// Data contoh. Nanti diganti data user yang sedang login dari PHP (tabel users).
-let akun = { nama: 'Raffy Kurnia', hp: '0812-3456-7890', email: 'raffy.kurnia@example.com' };
+  const byId = (id) => document.getElementById(id);
 
-const akunBtn   = document.getElementById('akun-btn');
-const akunMenu  = document.getElementById('akun-menu');
-const akunModal = document.getElementById('akun-modal');
-const akunForm  = document.getElementById('akun-form');
+  const btn = byId('akun-btn');
+  const menu = byId('akun-menu');
+  if (!btn || !menu) return; // halaman tanpa menu akun (belum login)
 
-// Tampilkan data akun di dropdown dan huruf awal di tombol
-function tampilkanAkun() {
-  document.getElementById('akun-nama-depan').innerText = akun.nama.split(' ')[0];
-  document.getElementById('akun-nama').innerText = akun.nama;
-  document.getElementById('akun-hp').innerText = akun.hp;
-  document.getElementById('akun-email').innerText = akun.email;
-  akunBtn.querySelector('span').innerText = akun.nama.charAt(0).toUpperCase();
-}
+  const profileUrl = btn.dataset.profileUrl || '../../backend/api/profile.php';
+  const loginUrl = btn.dataset.loginUrl || '/user/login.php';
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-function tutupModalAkun() {
-  akunModal.classList.add('hidden');
-  akunModal.classList.remove('flex');
-}
+  let profile = null;
+  const changeListeners = [];
+  const errorListeners = [];
 
-// Semua kode di bawah hanya jalan kalau halaman punya tombol akun
-if (akunBtn) {
-  tampilkanAkun();
+  // API kecil untuk skrip halaman (mis. dashboard.js) tanpa menduplikasi kode akun.
+  window.PemonAccount = {
+    getProfile: () => profile,
+    onChange(callback) {
+      changeListeners.push(callback);
+      if (profile) callback(profile);
+    },
+    onError(callback) {
+      errorListeners.push(callback);
+    },
+  };
 
-  // Klik tombol akun -> buka / tutup dropdown
-  akunBtn.addEventListener('click', function (e) {
-    e.stopPropagation();
-    akunMenu.classList.toggle('hidden');
+  function setText(id, value) {
+    const el = byId(id);
+    if (el) el.textContent = value;
+  }
+
+  function showProfile(data) {
+    profile = data;
+    const fullName = String(data.full_name || data.username || '').trim() || 'Pelanggan';
+    const firstName = fullName.split(/\s+/)[0];
+
+    setText('akun-initial', firstName.charAt(0).toUpperCase());
+    setText('akun-nama-depan', firstName);
+    setText('akun-nama', fullName);
+    setText('akun-username', data.username ? '@' + data.username : '');
+    setText('akun-email', data.email || '');
+    setText('akun-hp', data.phone_number || '');
+
+    changeListeners.forEach((callback) => callback(profile));
+  }
+
+  async function loadProfile() {
+    try {
+      const response = await fetch(profileUrl, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (response.status === 401) {
+        window.location.href = loginUrl;
+        return;
+      }
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.data) {
+        throw new Error(result.message || 'Gagal memuat profil.');
+      }
+      showProfile(result.data);
+    } catch (error) {
+      console.error('Profile loading error:', error);
+      setText('akun-nama', 'Profil gagal dimuat');
+      errorListeners.forEach((callback) => callback(error));
+    }
+  }
+
+  // ---------- Dropdown ----------
+  function setMenu(open) {
+    menu.classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', String(open));
+  }
+
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setMenu(menu.classList.contains('hidden'));
   });
 
-  // Klik di luar dropdown -> dropdown tertutup
-  document.addEventListener('click', function (e) {
-    if (!akunMenu.contains(e.target)) akunMenu.classList.add('hidden');
+  document.addEventListener('click', (event) => {
+    if (!menu.contains(event.target) && !btn.contains(event.target)) setMenu(false);
   });
 
-  // Klik "Edit Profil" -> buka pop-up, isi dengan data sekarang
-  document.getElementById('akun-edit-btn').addEventListener('click', function () {
-    akunMenu.classList.add('hidden');
-    document.getElementById('akun-input-nama').value = akun.nama;
-    document.getElementById('akun-input-hp').value = akun.hp;
-    document.getElementById('akun-input-email').value = akun.email;
-    document.getElementById('akun-input-password').value = '';
-    document.getElementById('akun-error').classList.add('hidden');
-    akunModal.classList.remove('hidden');
-    akunModal.classList.add('flex');
+  // ---------- Helper untuk semua pop-up ----------
+  function openPopup(popup) {
+    popup.classList.remove('hidden');
+    popup.classList.add('flex');
+  }
+
+  function closePopup(popup) {
+    popup.classList.add('hidden');
+    popup.classList.remove('flex');
+  }
+
+  const editModal = byId('akun-modal');
+  const logoutModal = byId('akun-logout-modal');
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    setMenu(false);
+    if (editModal) closePopup(editModal);
+    if (logoutModal) closePopup(logoutModal);
   });
 
-  // Tombol Batal / klik area gelap -> pop-up tertutup
-  document.getElementById('akun-batal').addEventListener('click', tutupModalAkun);
-  akunModal.addEventListener('click', function (e) {
-    if (e.target === akunModal) tutupModalAkun();
+  // ---------- Pop-up Keluar ----------
+  const logoutForm = byId('akun-logout-form');
+  const logoutCancel = byId('akun-logout-batal');
+  const logoutOk = byId('akun-logout-ok');
+
+  if (logoutForm && logoutModal && logoutOk) {
+    // Klik "Keluar" di dropdown -> tampilkan konfirmasi dulu.
+    logoutForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      setMenu(false);
+      openPopup(logoutModal);
+      logoutOk.focus();
+    });
+
+    // "Ya, Keluar" mengirim form POST biasa (ada token CSRF) -> server mengarahkan ke halaman login.
+    logoutOk.addEventListener('click', () => {
+      logoutOk.disabled = true;
+      logoutForm.submit(); // submit() bawaan tidak memicu event 'submit' di atas
+    });
+
+    logoutCancel?.addEventListener('click', () => closePopup(logoutModal));
+    logoutModal.addEventListener('click', (event) => {
+      if (event.target === logoutModal) closePopup(logoutModal);
+    });
+  }
+
+  // ---------- Pop-up Edit Profil ----------
+  const form = byId('akun-form');
+  const editBtn = byId('akun-edit-btn');
+  const cancelBtn = byId('akun-batal');
+  const errorBox = byId('akun-error');
+
+  const input = {
+    name: byId('akun-input-nama'),
+    phone: byId('akun-input-hp'),
+    email: byId('akun-input-email'),
+    current: byId('akun-input-current-password'),
+    password: byId('akun-input-password'),
+    confirm: byId('akun-input-confirm-password'),
+  };
+
+  const editReady = editModal && form && errorBox &&
+    Object.values(input).every(Boolean);
+
+  if (!editReady) {
+    loadProfile();
+    return; // halaman lama tanpa pop-up edit: dropdown + data profil saja
+  }
+
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.classList.remove('hidden');
+  }
+
+  function openEditModal() {
+    if (!profile) return;
+    input.name.value = profile.full_name || '';
+    input.phone.value = profile.phone_number || '';
+    input.email.value = profile.email || '';
+    input.current.value = '';
+    input.password.value = '';
+    input.confirm.value = '';
+    errorBox.textContent = '';
+    errorBox.classList.add('hidden');
+    setMenu(false);
+    openPopup(editModal);
+    input.name.focus();
+  }
+
+  function toast(message) {
+    const note = document.createElement('div');
+    note.setAttribute('role', 'status');
+    note.className = 'fixed bottom-4 right-4 z-50 rounded-xl bg-[#0d3b36] px-4 py-3 text-sm font-semibold text-white shadow-lg';
+    note.textContent = message;
+    document.body.append(note);
+    window.setTimeout(() => note.remove(), 3500);
+  }
+
+  editBtn?.addEventListener('click', openEditModal);
+  cancelBtn?.addEventListener('click', () => closePopup(editModal));
+  editModal.addEventListener('click', (event) => {
+    if (event.target === editModal) closePopup(editModal);
   });
 
-  // Tombol Simpan Perubahan
-  akunForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const nama = document.getElementById('akun-input-nama').value.trim();
-    const hp = document.getElementById('akun-input-hp').value.trim();
-    const email = document.getElementById('akun-input-email').value.trim();
-    const password = document.getElementById('akun-input-password').value;
-    const error = document.getElementById('akun-error');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.classList.add('hidden');
 
-    // Validasi sederhana
-    let pesan = '';
-    if (nama.length < 3) pesan = 'Nama lengkap minimal 3 karakter.';
-    else if (hp.replace(/\D/g, '').length < 9) pesan = 'Nomor handphone minimal 9 digit.';
-    else if (!email.includes('@') || !email.includes('.')) pesan = 'Format email belum benar.';
-    else if (password !== '' && password.length < 8) pesan = 'Password baru minimal 8 karakter, atau kosongkan.';
+    const fullName = input.name.value.trim();
+    const phone = input.phone.value.trim();
+    const email = input.email.value.trim();
+    const current = input.current.value;
+    const next = input.password.value;
+    const confirm = input.confirm.value;
 
-    if (pesan !== '') {
-      error.innerText = pesan;
-      error.classList.remove('hidden');
-      return;
+    if (fullName.length < 3) return showError('Nama lengkap minimal 3 karakter.');
+    if (phone.replace(/\D/g, '').length < 9) return showError('Nomor handphone minimal 9 digit.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Format email belum benar.');
+
+    // Password hanya diubah kalau salah satu kolom password diisi.
+    const changingPassword = current !== '' || next !== '' || confirm !== '';
+    if (changingPassword) {
+      if (current === '') return showError('Masukkan password saat ini.');
+      if (next === '') return showError('Masukkan password baru.');
+      if (next.length < 13) return showError('Password baru minimal 13 karakter.');
+      if (next.length > 72) return showError('Password baru maksimal 72 karakter.');
+      if (confirm === '') return showError('Konfirmasi password baru.');
+      if (next !== confirm) return showError('Konfirmasi password tidak sama.');
     }
 
-    // PHP nanti: kirim data ini ke server (UPDATE users SET full_name, phone_number, email WHERE user_id)
-    // Password hanya diubah kalau kolom password baru diisi.
-    akun = { nama: nama, hp: hp, email: email };
-    tampilkanAkun();
-    tutupModalAkun();
+    if (!csrfToken) return showError('Token keamanan hilang. Muat ulang halaman.');
+
+    const payload = { full_name: fullName, phone_number: phone, email };
+    if (changingPassword) {
+      payload.current_password = current;
+      payload.new_password = next;
+    }
+
+    const submit = form.querySelector('button[type="submit"]');
+    const submitLabel = submit ? submit.textContent : '';
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = 'Menyimpan…';
+    }
+
+    try {
+      const response = await fetch(profileUrl, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload),
+      });
+      if (response.status === 401) {
+        window.location.href = loginUrl;
+        return;
+      }
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || 'Profil gagal diperbarui.');
+      }
+
+      showProfile(result.data);
+      closePopup(editModal);
+      toast('Profil berhasil diperbarui.');
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = submitLabel;
+      }
+    }
   });
-}
+
+  loadProfile();
+})();
