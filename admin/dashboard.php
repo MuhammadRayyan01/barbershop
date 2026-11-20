@@ -61,6 +61,7 @@ try {
     $statsStmt = $pdo->prepare("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE reservation_status = 'inactive') AS cancelled FROM reservation r JOIN time_slot ts ON ts.slot_id = r.slot_id WHERE ts.slot_date = CAST(:date AS date)");
     $statsStmt->execute(['date' => $date]);
     $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+    $revenueTotal = (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM payment WHERE payment_status = 'paid'")->fetchColumn();
 
     $where = ['ts.slot_date = CAST(:date AS date)'];
     $params = ['date' => $date];
@@ -75,6 +76,7 @@ try {
     error_log('Admin dashboard data error: ' . $e->getMessage());
     $reservations = [];
     $stats = ['total' => 0, 'cancelled' => 0];
+    $revenueTotal = 0;
     $pageError = 'Data reservasi gagal dimuat.';
 }
 
@@ -107,7 +109,7 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
       </a>
     </div>
 
-    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
       <div class="bg-white rounded-2xl p-5 flex items-center justify-between shadow-sm">
         <div>
           <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL RESERVATION</p>
@@ -117,6 +119,16 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
           <span class="material-symbols-outlined">calendar_today</span>
         </div>
       </div>
+      <a href="reservations.php?date=<?= $escape($date) ?>" class="bg-white rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md hover:ring-2 hover:ring-emerald-700/15 transition focus:outline-none focus:ring-2 focus:ring-emerald-700" aria-label="Lihat analitik pemasukan dan reservasi">
+        <div>
+          <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL PEMASUKAN</p>
+          <p class="text-2xl sm:text-3xl font-extrabold mt-1">Rp <?= number_format($revenueTotal, 0, ',', '.') ?></p>
+          <p class="text-xs text-emerald-800 font-semibold mt-2">Lihat grafik &amp; reservasi <span aria-hidden="true">→</span></p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-100 text-[#0d3b36] flex items-center justify-center">
+          <span class="material-symbols-outlined">monitoring</span>
+        </div>
+      </a>
       <div class="bg-white rounded-2xl p-5 flex items-center justify-between shadow-sm">
         <div>
           <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL CANCELED</p>
