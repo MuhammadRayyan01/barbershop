@@ -334,10 +334,25 @@ if (!empty($existingSnapToken)) {
 */
 
 try {
+    $appBaseUrl = rtrim(midtransEnv('APP_BASE_URL'), '/');
+    $appBaseUrlParts = parse_url($appBaseUrl);
+
+    if (
+        !is_array($appBaseUrlParts) ||
+        !in_array(strtolower($appBaseUrlParts['scheme'] ?? ''), ['http', 'https'], true) ||
+        empty($appBaseUrlParts['host'])
+    ) {
+        throw new RuntimeException('APP_BASE_URL is missing or invalid.');
+    }
+
     $payload = [
         'transaction_details' => [
             'order_id' => $orderId,
             'gross_amount' => $grossAmount
+        ],
+        // Override the example Finish URL configured in the Midtrans dashboard.
+        'callbacks' => [
+            'finish' => $appBaseUrl . '/user/booking/success.php'
         ],
         'customer_details' => [
             'first_name' => $customer['full_name'],

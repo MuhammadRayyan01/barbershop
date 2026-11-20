@@ -12,8 +12,10 @@
 
     const CONFIRMATION_ENDPOINT = '../../backend/api/confirmation.php';
     const PAYMENT_ENDPOINT = '../../backend/api/create_payment.php';
+    const PAYMENT_STATUS_ENDPOINT = '../../backend/api/payment_status.php';
 
     let holdToken = null;
+    let verifyOnly = false;
 
     // -----------------------------------------------
     // Format currency
@@ -222,6 +224,74 @@
         });
     }
 
+    // Ask our backend to verify/finalize the transaction before redirecting.
+    async function verifyPaymentAndRedirect(csrfToken) {
+        verifyOnly = true;
+        button.disabled = true;
+        button.textContent = 'Memverifikasi pembayaran...';
+        showPaymentMessage(
+            'Pembayaran diterima. Sedang memverifikasi reservasi Anda...',
+            'success'
+        );
+
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            try {
+                const response = await fetch(PAYMENT_STATUS_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    body: JSON.stringify({ hold_token: holdToken })
+                });
+
+                const result = await response.json().catch(() => null);
+
+                if (
+                    result?.booking_status === 'confirmed' &&
+                    result?.data?.reservation_id
+                ) {
+                    window.location.replace(
+                        'success.php?reservation_id=' +
+                        encodeURIComponent(result.data.reservation_id)
+                    );
+                    return;
+                }
+
+                if (result?.booking_status === 'manual_review') {
+                    verifyOnly = false;
+                    showPaymentMessage(
+                        result.message || 'Pembayaran diterima, tetapi reservasi perlu diperiksa admin.',
+                        'info'
+                    );
+                    button.disabled = true;
+                    button.textContent = 'Pembayaran diterima';
+                    return;
+                }
+
+                if (!response.ok && response.status !== 202) {
+                    throw new Error(
+                        result?.message || 'Status pembayaran belum dapat diperiksa.'
+                    );
+                }
+            } catch (error) {
+                console.error('Payment verification attempt failed:', error);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        showPaymentMessage(
+            'Pembayaran belum terkonfirmasi ke aplikasi. Tekan “Periksa status pembayaran” untuk mencoba lagi.',
+            'info'
+        );
+        button.disabled = false;
+        button.textContent = 'Periksa status pembayaran';
+    }
+
     // -----------------------------------------------
     // Confirm and create Midtrans payment
     // -----------------------------------------------
@@ -244,6 +314,11 @@
                 'Sesi formulir berakhir. Muat ulang halaman.',
                 'error'
             );
+            return;
+        }
+
+        if (verifyOnly) {
+            await verifyPaymentAndRedirect(csrfToken);
             return;
         }
 
@@ -291,18 +366,12 @@
             window.snap.pay(payment.snap_token, {
                 onSuccess: function (result) {
                     console.log('Midtrans success callback:', result);
-
-                    showPaymentMessage(
-                        'Pembayaran diterima. Backend sedang memverifikasi pembayaran Anda.',
-                        'success'
-                    );
-
-                    button.disabled = true;
-                    button.textContent = 'Memverifikasi pembayaran...';
+                    void verifyPaymentAndRedirect(csrfToken);
                 },
 
                 onPending: function (result) {
                     console.log('Midtrans pending callback:', result);
+                    verifyOnly = true;
 
                     showPaymentMessage(
                         'Pembayaran sedang menunggu penyelesaian. Silakan ikuti instruksi Midtrans.',
@@ -310,11 +379,12 @@
                     );
 
                     button.disabled = false;
-                    button.textContent = 'Coba periksa pembayaran';
+                    button.textContent = 'Periksa status pembayaran';
                 },
 
                 onError: function (result) {
                     console.error('Midtrans error callback:', result);
+                    verifyOnly = false;
 
                     showPaymentMessage(
                         'Pembayaran belum berhasil. Silakan coba lagi.',
@@ -326,6 +396,7 @@
                 },
 
                 onClose: function () {
+                    verifyOnly = false;
                     showPaymentMessage(
                         'Jendela pembayaran ditutup. Booking Anda masih mengikuti waktu berlaku hold.',
                         'info'
