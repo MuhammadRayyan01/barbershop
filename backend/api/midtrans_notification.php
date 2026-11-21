@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/midtrans.php';
 require_once __DIR__ . '/../config/payment_finalization.php';
+require_once __DIR__ . '/../config/refund_reconciliation.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -72,7 +73,10 @@ try {
         ]);
     }
 } catch (Throwable $e) {
-    error_log('Notification signature verification error: ' . $e->getMessage());
+    error_log(
+        'Notification signature verification error: ' .
+        $e->getMessage()
+    );
 
     jsonResponse(500, [
         'success' => false,
@@ -80,11 +84,23 @@ try {
     ]);
 }
 
+// Midtrans Dashboard Test Notification uses a synthetic order ID.
+// It is not a real payment and has no corresponding booking hold.
+if (str_starts_with($orderId, 'payment_notif_test_')) {
+    jsonResponse(200, [
+        'success' => true,
+        'message' => 'Midtrans test notification received successfully.'
+    ]);
+}
+
 // Retrieve the actual transaction status from Midtrans.
 try {
     $transaction = midtransGetTransactionStatus($orderId);
 } catch (Throwable $e) {
-    error_log('Midtrans status retrieval error: ' . $e->getMessage());
+    error_log(
+        'Midtrans status retrieval error: ' .
+        $e->getMessage()
+    );
 
     jsonResponse(503, [
         'success' => false,
@@ -169,7 +185,10 @@ try {
     $holdAmount = $stmt->fetchColumn();
 
     if ($holdAmount === false) {
-        error_log('No booking hold found for Midtrans order: ' . $orderId);
+        error_log(
+            'No booking hold found for Midtrans order: ' .
+            $orderId
+        );
 
         jsonResponse(404, [
             'success' => false,
@@ -183,7 +202,9 @@ try {
         $expectedAmount === null ||
         $expectedAmount !== $verifiedAmount
     ) {
-        error_log('Booking hold amount does not match Midtrans transaction.');
+        error_log(
+            'Booking hold amount does not match Midtrans transaction.'
+        );
 
         jsonResponse(400, [
             'success' => false,
@@ -191,7 +212,10 @@ try {
         ]);
     }
 } catch (PDOException $e) {
-    error_log('Booking hold verification error: ' . $e->getMessage());
+    error_log(
+        'Booking hold verification error: ' .
+        $e->getMessage()
+    );
 
     jsonResponse(500, [
         'success' => false,
@@ -199,8 +223,13 @@ try {
     ]);
 }
 
-// Handle a fully refunded transaction separately from payment finalization.
 $transactionStatus = $transaction['transaction_status'] ?? '';
+
+/*
+|--------------------------------------------------------------------------
+| Handle a fully refunded transaction
+|--------------------------------------------------------------------------
+*/
 
 if ($transactionStatus === 'refund') {
     try {
@@ -233,7 +262,10 @@ if ($transactionStatus === 'refund') {
         if (!$payment) {
             $pdo->rollBack();
 
-            error_log('Refund notification has no matching payment: ' . $orderId);
+            error_log(
+                'Refund notification has no matching payment: ' .
+                $orderId
+            );
 
             jsonResponse(404, [
                 'success' => false,
@@ -241,6 +273,20 @@ if ($transactionStatus === 'refund') {
             ]);
         }
 
+        // An already completed refund is safe to acknowledge.
+        if (
+            $payment['payment_status'] === 'refunded' &&
+            $payment['refund_status'] === 'completed'
+        ) {
+            $pdo->commit();
+
+            jsonResponse(200, [
+                'success' => true,
+                'message' => 'Refund was already processed.'
+            ]);
+        }
+
+        // A refund must have a matching locally stored refund key.
         $refundKey = $payment['refund_key'];
 
         if (
@@ -249,7 +295,10 @@ if ($transactionStatus === 'refund') {
         ) {
             $pdo->rollBack();
 
-            error_log('Refund notification has no stored refund key: ' . $orderId);
+            error_log(
+                'Refund notification has no stored refund key: ' .
+                $orderId
+            );
 
             jsonResponse(200, [
                 'success' => true,
@@ -275,7 +324,7 @@ if ($transactionStatus === 'refund') {
             }
         }
 
-        // A refund request is not complete until Midtrans confirms it.
+        // Wait until Midtrans confirms the refund with bank_confirmed_at.
         if (
             !is_array($matchingRefund) ||
             !isset($matchingRefund['bank_confirmed_at']) ||
@@ -302,11 +351,15 @@ if ($transactionStatus === 'refund') {
         if (
             $confirmedRefundAmount === null ||
             $originalPaymentAmount === null ||
-            $confirmedRefundAmount !== $originalPaymentAmount
+            $confirmedRefundAmount !== $originalPaymentAmount ||
+            $verifiedAmount !== $originalPaymentAmount
         ) {
             $pdo->rollBack();
 
-            error_log('Confirmed refund amount does not match the original payment: ' . $orderId);
+            error_log(
+                'Confirmed refund amount does not match the original payment: ' .
+                $orderId
+            );
 
             jsonResponse(400, [
                 'success' => false,
@@ -314,24 +367,21 @@ if ($transactionStatus === 'refund') {
             ]);
         }
 
-        // Do not process a payment that was not marked as awaiting a refund.
-        if ($payment['refund_status'] === 'completed') {
-            $pdo->commit();
-
-            jsonResponse(200, [
-                'success' => true,
-                'message' => 'Refund was already processed.'
-            ]);
-        }
-
-        if ($payment['refund_status'] !== 'pending') {
+        // Only a paid payment with a pending refund can be completed.
+        if (
+            $payment['payment_status'] !== 'paid' ||
+            $payment['refund_status'] !== 'pending'
+        ) {
             $pdo->rollBack();
 
-            error_log('Refund confirmation received for a payment not awaiting a refund: ' . $orderId);
+            error_log(
+                'Refund confirmation received for an unexpected payment state: ' .
+                $orderId
+            );
 
             jsonResponse(200, [
                 'success' => true,
-                'message' => 'Refund notification received but no pending refund exists.'
+                'message' => 'Refund notification received but the payment is not awaiting a refund.'
             ]);
         }
 
@@ -341,21 +391,29 @@ if ($transactionStatus === 'refund') {
             SET
                 payment_status = 'refunded',
                 refund_status = 'completed',
-                refunded_at = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP
+                refunded_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta',
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
             WHERE payment_id = :payment_id
+              AND payment_status = 'paid'
+              AND refund_status = 'pending'
         ");
 
         $stmt->execute([
             ':payment_id' => $payment['payment_id']
         ]);
 
+        if ($stmt->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Payment state changed during refund processing.'
+            );
+        }
+
         // Deactivate the reservation after the confirmed full refund.
         $stmt = $pdo->prepare("
             UPDATE reservation
             SET
                 reservation_status = 'inactive',
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
             WHERE reservation_id = :reservation_id
         ");
 
@@ -367,14 +425,19 @@ if ($transactionStatus === 'refund') {
 
         jsonResponse(200, [
             'success' => true,
-            'message' => 'Refund successfully confirmed and processed.'
+            'message' => 'Refund successfully confirmed and processed.',
+            'payment_status' => 'refunded',
+            'refund_status' => 'completed'
         ]);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
 
-        error_log('Refund notification processing error: ' . $e->getMessage());
+        error_log(
+            'Refund notification processing error: ' .
+            $e->getMessage()
+        );
 
         jsonResponse(500, [
             'success' => false,
@@ -383,28 +446,194 @@ if ($transactionStatus === 'refund') {
     }
 }
 
-// A partial refund is not a completed full cancellation.
+/*
+|--------------------------------------------------------------------------
+| Handle a partial refund
+|--------------------------------------------------------------------------
+*/
+
 if ($transactionStatus === 'partial_refund') {
     jsonResponse(200, [
         'success' => true,
-        'message' => 'Partial refund notification received.',
+        'message' => 'Partial refund notification received. Full refund has not been confirmed.',
         'payment_status' => $transactionStatus
     ]);
 }
+
+/*
+|--------------------------------------------------------------------------
+| Handle a confirmed Midtrans cancellation
+|--------------------------------------------------------------------------
+|
+| This also repairs local records if Midtrans successfully cancelled a
+| captured transaction but the customer cancellation endpoint failed
+| before updating the database.
+|
+*/
+
+if ($transactionStatus === 'cancel') {
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("
+            SELECT
+                p.payment_id,
+                p.reservation_id,
+                p.payment_status::text AS payment_status,
+                p.refund_status,
+                r.reservation_status
+            FROM payment p
+            INNER JOIN reservation r
+                ON r.reservation_id = p.reservation_id
+            WHERE p.transaction_reference = :order_id
+            LIMIT 1
+            FOR UPDATE OF p, r
+        ");
+
+        $stmt->execute([
+            ':order_id' => $orderId
+        ]);
+
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // No permanent payment means there is nothing to reconcile.
+        if (!$payment) {
+            $pdo->commit();
+
+            jsonResponse(200, [
+                'success' => true,
+                'message' => 'Cancellation notification received. No permanent payment record exists.'
+            ]);
+        }
+
+        // Never overwrite a completed refund.
+        if (
+            $payment['payment_status'] === 'refunded' ||
+            $payment['refund_status'] === 'completed'
+        ) {
+            $pdo->commit();
+
+            jsonResponse(200, [
+                'success' => true,
+                'message' => 'Existing completed refund state was preserved.'
+            ]);
+        }
+
+        // Already reconciled.
+        if (
+            $payment['payment_status'] === 'cancelled' &&
+            $payment['refund_status'] === 'not_requested'
+        ) {
+            $pdo->commit();
+
+            jsonResponse(200, [
+                'success' => true,
+                'message' => 'Cancellation was already processed.'
+            ]);
+        }
+
+        // A confirmed cancellation means no refund is needed.
+        // Only clear not_requested or pending refund states.
+        if (
+            $payment['payment_status'] !== 'paid' ||
+            !in_array(
+                $payment['refund_status'],
+                ['not_requested', 'pending'],
+                true
+            )
+        ) {
+            $pdo->commit();
+
+            jsonResponse(200, [
+                'success' => true,
+                'message' => 'Cancellation received. Existing payment or refund state was preserved.'
+            ]);
+        }
+
+        // Update the payment ONCE. Do not run a second update afterwards:
+        // the first update changes payment_status from paid to cancelled.
+        $stmt = $pdo->prepare("
+            UPDATE payment
+            SET
+                payment_status = 'cancelled',
+                refund_status = 'not_requested',
+                refund_key = NULL,
+                refund_reason = NULL,
+                refund_requested_at = NULL,
+                refunded_at = NULL,
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE payment_id = :payment_id
+              AND payment_status = 'paid'
+              AND refund_status IN ('not_requested', 'pending')
+        ");
+
+        $stmt->execute([
+            ':payment_id' => $payment['payment_id']
+        ]);
+
+        if ($stmt->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Payment state changed during cancellation reconciliation.'
+            );
+        }
+
+        // Deactivate the reservation after confirmed cancellation.
+        $stmt = $pdo->prepare("
+            UPDATE reservation
+            SET
+                reservation_status = 'inactive',
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE reservation_id = :reservation_id
+        ");
+
+        $stmt->execute([
+            ':reservation_id' => $payment['reservation_id']
+        ]);
+
+        $pdo->commit();
+
+        jsonResponse(200, [
+            'success' => true,
+            'message' => 'Midtrans cancellation confirmed and local records reconciled.',
+            'payment_status' => 'cancelled',
+            'refund_status' => 'not_requested'
+        ]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        error_log(
+            'Cancel notification processing error: ' .
+            $e->getMessage()
+        );
+
+        jsonResponse(500, [
+            'success' => false,
+            'message' => 'Unable to process cancellation notification.'
+        ]);
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Finalize a successful payment
+|--------------------------------------------------------------------------
+*/
 
 // Determine whether the transaction is a successful payment.
 $fraudStatus = $transaction['fraud_status'] ?? '';
 
 $isPaid = (
-    $transactionStatus === 'settlement'
-    ||
+    $transactionStatus === 'settlement' ||
     (
         $transactionStatus === 'capture' &&
         $fraudStatus === 'accept'
     )
 );
 
-// A pending, cancelled, expired, or failed transaction must not create a reservation.
+// A pending, cancelled, expired, or failed transaction must not
+// create a reservation.
 if (!$isPaid) {
     jsonResponse(200, [
         'success' => true,
@@ -415,7 +644,9 @@ if (!$isPaid) {
 
 // Finalize the verified payment.
 if (!function_exists('finalizeVerifiedMidtransPayment')) {
-    error_log('Payment finalization function has not been installed yet.');
+    error_log(
+        'Payment finalization function has not been installed yet.'
+    );
 
     jsonResponse(503, [
         'success' => false,
@@ -429,13 +660,25 @@ try {
         $transaction
     );
 
+    if ($transactionStatus === 'settlement') {
+        $refundResult = submitPendingMidtransRefund(
+            $pdo,
+            $orderId,
+            $transaction
+        );
+        $result['refund_submission'] = $refundResult;
+    }
+
     jsonResponse(200, [
         'success' => true,
         'message' => 'Payment notification processed.',
         'data' => $result
     ]);
 } catch (Throwable $e) {
-    error_log('Payment finalization error: ' . $e->getMessage());
+    error_log(
+        'Payment finalization error: ' .
+        $e->getMessage()
+    );
 
     jsonResponse(500, [
         'success' => false,
