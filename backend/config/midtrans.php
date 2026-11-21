@@ -74,6 +74,17 @@ function midtransSnapBaseUrl(): string
         : 'https://app.sandbox.midtrans.com/snap/snap.js';
 }
 
+// Since 28 October 2026 Midtrans signs notifications with a dedicated
+// Signature Secret Key (Settings > Access Keys). Older accounts started with
+// the same value as their legacy server key, so fall back to the server key
+// when MIDTRANS_SIGNATURE_SECRET_KEY is not set.
+function midtransSignatureSecretKey(): string
+{
+    $key = midtransEnv('MIDTRANS_SIGNATURE_SECRET_KEY');
+
+    return $key !== '' ? $key : midtransServerKey();
+}
+
 /*
 |--------------------------------------------------------------------------
 | General Midtrans API request
@@ -111,8 +122,17 @@ function midtransApiRequest(
         CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_USERAGENT => 'PemonBarbershop/1.0',
         CURLOPT_CUSTOMREQUEST => strtoupper($method)
     ];
+
+    // A POST without a body (for example the cancel call) must still send
+    // "Content-Length: 0". With only CURLOPT_CUSTOMREQUEST, cURL leaves the
+    // header out, and some servers reject such a request.
+    if (strtoupper($method) === 'POST') {
+        $options[CURLOPT_POST] = true;
+        $options[CURLOPT_POSTFIELDS] = '';
+    }
 
     if ($payload !== null) {
         $jsonPayload = json_encode(
@@ -148,7 +168,12 @@ function midtransApiRequest(
             JSON_THROW_ON_ERROR
         );
     } catch (JsonException $e) {
-        error_log('Invalid Midtrans JSON response.');
+        error_log(
+            'Invalid Midtrans JSON response for ' .
+            strtoupper($method) . ' ' . $endpoint .
+            ' (HTTP ' . $httpStatus . '): ' .
+            substr(trim((string) $response), 0, 300)
+        );
 
         throw new RuntimeException(
             'Invalid response received from the payment gateway.'
@@ -162,12 +187,24 @@ function midtransApiRequest(
     }
 
     if ($httpStatus < 200 || $httpStatus >= 300) {
+        // Log what Midtrans actually said so the real reason is visible.
+        $gatewayCode = is_scalar($decodedResponse['status_code'] ?? null)
+            ? (string) $decodedResponse['status_code']
+            : 'n/a';
+
+        $gatewayMessage = is_string($decodedResponse['status_message'] ?? null)
+            ? $decodedResponse['status_message']
+            : 'no message';
+
         error_log(
-            'Midtrans API returned HTTP status: ' . $httpStatus
+            'Midtrans API ' . strtoupper($method) . ' ' . $endpoint .
+            ' returned HTTP ' . $httpStatus .
+            ' (status_code ' . $gatewayCode . '): ' . $gatewayMessage .
+            ' | body: ' . substr(trim((string) $response), 0, 500)
         );
 
         throw new RuntimeException(
-            'Payment gateway request failed.'
+            'MIDTRANS_API_ERROR:' . $gatewayCode . ': ' . $gatewayMessage
         );
     }
 
@@ -209,6 +246,103 @@ function midtransGetTransactionStatus(string $orderId): array
     );
 }
 
+// Request a refund from Midtrans.
+
+
+function midtransRequestRefund(
+    string $transactionIdentifier,
+    array $payload
+): array {
+    if ($transactionIdentifier === '') {
+        throw new InvalidArgumentException(
+            'Transaction identifier cannot be empty.'
+        );
+    }
+
+    if (
+        !isset($payload['refund_key']) ||
+        !is_string($payload['refund_key']) ||
+        $payload['refund_key'] === ''
+    ) {
+        throw new InvalidArgumentException(
+            'A valid refund key is required.'
+        );
+    }
+
+    if (
+        !isset($payload['amount']) ||
+        !is_numeric($payload['amount']) ||
+        (float) $payload['amount'] <= 0
+    ) {
+        throw new InvalidArgumentException(
+            'A valid refund amount is required.'
+        );
+    }
+
+    $amount = (float) $payload['amount'];
+
+    if ($amount !== (float) (int) $amount) {
+        throw new InvalidArgumentException(
+            'Refund amount must be a whole IDR amount.'
+        );
+    }
+
+    $payload['amount'] = (int) $amount;
+
+    $delays = [1, 5];
+
+    for ($attempt = 0; $attempt <= count($delays); $attempt++) {
+        try {
+            return midtransApiRequest(
+                'POST',
+                '/v2/' . rawurlencode($transactionIdentifier) . '/refund',
+                $payload
+            );
+
+        } catch (RuntimeException $e) {
+            $isTemporaryProcessingError = str_contains(
+                $e->getMessage(),
+                'MIDTRANS_API_ERROR:2007:'
+            );
+
+            if (!$isTemporaryProcessingError) {
+                throw $e;
+            }
+
+            if ($attempt >= count($delays)) {
+                throw $e;
+            }
+
+            error_log(
+                'Midtrans refund processing conflict (2007). Retrying after ' .
+                $delays[$attempt] . ' seconds. Attempt ' .
+                ($attempt + 1)
+            );
+
+            sleep($delays[$attempt]);
+        }
+    }
+
+    throw new RuntimeException(
+        'Unable to complete the Midtrans refund request.'
+    );
+}
+
+// Cancel a transaction that has not reached a refundable state.
+function midtransCancelTransaction(string $orderId): array
+{
+    if ($orderId === '') {
+        throw new InvalidArgumentException(
+            'Order ID cannot be empty.'
+        );
+    }
+
+    return midtransApiRequest(
+        'POST',
+        '/v2/' . rawurlencode($orderId) . '/cancel'
+    );
+}
+
 /*
 |--------------------------------------------------------------------------
 | Verify Midtrans notification signature
@@ -237,7 +371,7 @@ function midtransVerifyNotificationSignature(
         $orderId .
         $statusCode .
         $grossAmount .
-        midtransServerKey()
+        midtransSignatureSecretKey()
     );
 
     return hash_equals(

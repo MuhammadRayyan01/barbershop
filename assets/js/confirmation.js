@@ -17,6 +17,10 @@
     let holdToken = null;
     let verifyOnly = false;
 
+    // True after Midtrans reported a payment, until our backend has confirmed it.
+    let awaitingVerification = false;
+    let verifying = false;
+
     // -----------------------------------------------
     // Format currency
     // -----------------------------------------------
@@ -293,6 +297,113 @@
     }
 
     // -----------------------------------------------
+    // Ask OUR backend to verify the payment with Midtrans.
+    // The browser callback is never trusted as proof of payment.
+    // -----------------------------------------------
+
+    async function verifyPaymentStatus(csrfToken) {
+        if (verifying) return;
+        verifying = true;
+
+        button.disabled = true;
+        button.textContent = 'Memverifikasi pembayaran...';
+
+        const maxAttempts = 20;      // about 1 minute
+        const delayMs = 3000;
+
+        try {
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                let result = null;
+
+                try {
+                    const response = await fetch(PAYMENT_STATUS_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        body: JSON.stringify({ hold_token: holdToken })
+                    });
+
+                    result = await response.json().catch(() => null);
+                } catch (networkError) {
+                    result = null; // try again below
+                }
+
+                // Paid and saved in the database.
+                if (
+                    result?.success === true &&
+                    result.payment_status === 'paid' &&
+                    result.data?.reservation_id
+                ) {
+                    awaitingVerification = false;
+
+                    showPaymentMessage(
+                        'Pembayaran berhasil dan booking Anda terkonfirmasi.',
+                        'success'
+                    );
+
+                    window.location.assign(
+                        'success.php?reservation_id=' +
+                        encodeURIComponent(result.data.reservation_id)
+                    );
+                    return;
+                }
+
+                // Paid at Midtrans, but the booking needs manual review.
+                if (result?.booking_status === 'manual_review') {
+                    awaitingVerification = false;
+                    showPaymentMessage(result.message, 'error');
+                    button.textContent = 'Hubungi barbershop';
+                    return;
+                }
+
+                // Backend says: do not retry (for example gateway configuration problem).
+                if (result?.retry === false) {
+                    awaitingVerification = false;
+                    showPaymentMessage(
+                        result.message || 'Pembayaran tidak dapat diverifikasi.',
+                        'error'
+                    );
+                    button.textContent = 'Tidak dapat diverifikasi';
+                    return;
+                }
+
+                // Payment ended unsuccessfully at Midtrans.
+                if (
+                    result?.success === true &&
+                    ['deny', 'cancel', 'expire', 'failure'].includes(result.payment_status)
+                ) {
+                    awaitingVerification = false;
+                    showPaymentMessage(
+                        'Pembayaran tidak berhasil. Silakan pilih jadwal lagi.',
+                        'error'
+                    );
+                    button.textContent = 'Pembayaran gagal';
+                    return;
+                }
+
+                // Not confirmed yet: wait and ask again.
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+
+            // Gave up waiting. The customer can press the button to check again.
+            showPaymentMessage(
+                'Pembayaran belum terkonfirmasi. Jika Anda sudah membayar, jangan bayar lagi. Tekan tombol untuk memeriksa ulang.',
+                'info'
+            );
+            button.disabled = false;
+            button.textContent = 'Periksa pembayaran';
+
+        } finally {
+            verifying = false;
+        }
+    }
+
+    // -----------------------------------------------
     // Confirm and create Midtrans payment
     // -----------------------------------------------
 
@@ -317,8 +428,9 @@
             return;
         }
 
-        if (verifyOnly) {
-            await verifyPaymentAndRedirect(csrfToken);
+        // Payment already made: only re-check it, never create a second payment.
+        if (awaitingVerification) {
+            await verifyPaymentStatus(csrfToken);
             return;
         }
 
@@ -366,12 +478,22 @@
             window.snap.pay(payment.snap_token, {
                 onSuccess: function (result) {
                     console.log('Midtrans success callback:', result);
-                    void verifyPaymentAndRedirect(csrfToken);
+
+                    awaitingVerification = true;
+
+                    showPaymentMessage(
+                        'Pembayaran diterima. Backend sedang memverifikasi pembayaran Anda.',
+                        'success'
+                    );
+
+                    verifyPaymentStatus(csrfToken);
                 },
 
                 onPending: function (result) {
                     console.log('Midtrans pending callback:', result);
                     verifyOnly = true;
+
+                    awaitingVerification = true;
 
                     showPaymentMessage(
                         'Pembayaran sedang menunggu penyelesaian. Silakan ikuti instruksi Midtrans.',
@@ -396,7 +518,12 @@
                 },
 
                 onClose: function () {
-                    verifyOnly = false;
+                    // The popup also closes after a successful payment.
+                    // Do not overwrite the verification state in that case.
+                    if (awaitingVerification || verifying) {
+                        return;
+                    }
+
                     showPaymentMessage(
                         'Jendela pembayaran ditutup. Booking Anda masih mengikuti waktu berlaku hold.',
                         'info'

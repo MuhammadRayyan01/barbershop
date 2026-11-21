@@ -13,12 +13,7 @@ $csrfToken = getCsrfToken();
 $services = [];
 $pageError = '';
 
-/*
-|--------------------------------------------------------------------------
-| Retrieve active services
-|--------------------------------------------------------------------------
-*/
-
+// Retrieve active services
 try {
     $stmt = $pdo->query(
         "SELECT
@@ -34,25 +29,12 @@ try {
     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-
     error_log('Booking service list error: ' . $e->getMessage());
-
     $pageError = 'Daftar layanan gagal dimuat.';
 }
+// Default selected service
+$selectedServiceId = (int) ($services[0]['service_id'] ?? 0);
 
-/*
-|--------------------------------------------------------------------------
-| Default selected service
-|--------------------------------------------------------------------------
-*/
-
-$selectedServiceId = (int) (
-    $services[0]['service_id'] ?? 0
-);
-
-?>
-
-<?php
 $userPageTitle = 'Booking | Pemon Barbershop';
 $userActivePage = 'booking';
 $userBodyClass = 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b36] sm:p-6 flex flex-col';
@@ -67,9 +49,7 @@ require __DIR__ . '/../../includes/header.php';
 
 <main class="max-w-6xl w-full mx-auto my-6 space-y-6">
 
-    <!-- Stepper -->
     <div class="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium px-2">
-
         <span class="text-gray-400">
             <strong class="text-gray-700">1</strong> Lokasi
         </span>
@@ -94,14 +74,11 @@ require __DIR__ . '/../../includes/header.php';
             <strong class="text-gray-400">4</strong>
             Selesai
         </span>
-
     </div>
-
 
     <div class="space-y-4">
 
         <div class="flex justify-between items-center px-1">
-
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500">
                 Detail Reservasi
             </h2>
@@ -109,21 +86,16 @@ require __DIR__ . '/../../includes/header.php';
             <span class="text-xs font-bold text-gray-400 tracking-wider">
                 LANGKAH 2/4
             </span>
-
         </div>
 
-
         <?php if ($pageError !== ''): ?>
-
             <p
                 role="alert"
                 class="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-700"
             >
                 <?= $escape($pageError) ?>
             </p>
-
         <?php endif; ?>
-
 
         <form
             id="booking-form"
@@ -132,14 +104,12 @@ require __DIR__ . '/../../includes/header.php';
             class="space-y-4"
         >
 
-            <!-- CSRF token -->
             <input
                 type="hidden"
                 name="csrf_token"
                 value="<?= $escape($csrfToken) ?>"
             >
 
-            <!-- Selected service -->
             <input
                 type="hidden"
                 name="service_id"
@@ -147,14 +117,12 @@ require __DIR__ . '/../../includes/header.php';
                 value="<?= $selectedServiceId ?>"
             >
 
-            <!-- Selected time slot -->
             <input
                 type="hidden"
                 name="slot_id"
                 id="selected-slot-id"
                 value=""
             >
-
 
             <!-- Service selection -->
             <div class="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -171,9 +139,7 @@ require __DIR__ . '/../../includes/header.php';
 
                         <?php
                         $serviceId = (int) $service['service_id'];
-
-                        $isSelected =
-                            $serviceId === $selectedServiceId;
+                        $isSelected = $serviceId === $selectedServiceId;
                         ?>
 
                         <button
@@ -185,24 +151,17 @@ require __DIR__ . '/../../includes/header.php';
                                 ? 'border-2 border-[#0d3b36]'
                                 : 'border border-gray-200 hover:border-[#0d3b36]' ?>"
                         >
-
                             <span>
-
                                 <span class="block text-sm font-bold leading-tight text-[#0d3b36]">
                                     <?= $escape($service['service_name']) ?>
                                 </span>
 
                                 <span class="mt-2 block text-[11px] text-gray-600">
-                                    <?= $escape(
-                                        $service['description'] ?: 'Layanan barber'
-                                    ) ?>
+                                    <?= $escape($service['description'] ?: 'Layanan barber') ?>
                                 </span>
-
                             </span>
 
-
                             <span>
-
                                 <span class="block text-[10px] text-gray-400">
                                     Biaya layanan
                                 </span>
@@ -215,9 +174,7 @@ require __DIR__ . '/../../includes/header.php';
                                         '.'
                                     ) ?>
                                 </span>
-
                             </span>
-
                         </button>
 
                     <?php endforeach; ?>
@@ -226,10 +183,8 @@ require __DIR__ . '/../../includes/header.php';
 
             </div>
 
-
-            <!-- Booking date -->
+             <!-- Booking date -->
             <div>
-
                 <label
                     for="booking-date"
                     class="block text-xs font-bold text-[#12372a] mb-2"
@@ -249,15 +204,11 @@ require __DIR__ . '/../../includes/header.php';
                     Pilih tanggal untuk melihat ketersediaan.
                     Jam operasional 10.00–22.00, dengan interval 30 menit.
                 </p>
-
             </div>
-
 
             <!-- Available time slots -->
             <div>
-
                 <div class="flex justify-between items-center mb-2">
-
                     <label class="text-xs font-bold text-[#12372a]">
                         Slot Waktu Tersedia
                     </label>
@@ -265,27 +216,21 @@ require __DIR__ . '/../../includes/header.php';
                     <span class="text-[11px] text-gray-400">
                         Zona Waktu WIB
                     </span>
-
                 </div>
-
 
                 <div
                     id="time-group"
                     class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2"
                     aria-live="polite"
                 >
-
                     <p
                         id="slot-message"
                         class="col-span-full text-xs text-gray-500"
                     >
                         Memuat ketersediaan jadwal…
                     </p>
-
                 </div>
-
             </div>
-
 
             <!-- Booking information -->
             <div
@@ -295,14 +240,12 @@ require __DIR__ . '/../../includes/header.php';
                 Pilih tanggal dan waktu reservasi.
             </div>
 
-
             <!-- Booking actions -->
             <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
 
                 <span class="text-xs text-gray-500 flex items-center gap-1">
                     Konfirmasi instan tanpa biaya admin
                 </span>
-
 
                 <div class="flex gap-3 w-full sm:w-auto">
 
@@ -313,25 +256,20 @@ require __DIR__ . '/../../includes/header.php';
                         &larr; Kembali
                     </a>
 
-
                     <button
                         id="continue-booking"
                         type="submit"
                         disabled
-                        class="px-5 py-2 bg-gray-400 text-white rounded-xl text-xs font-bold text-center disabled:cursor-not-allowed"
+                        class="px-5 py-2 bg-[#0d3b36] disabled:bg-gray-400 hover:bg-[#082724] disabled:hover:bg-gray-400 text-white rounded-xl text-xs font-bold text-center transition-colors duration-200 disabled:cursor-not-allowed"
                     >
                         Lanjut ke Pembayaran &rarr;
                     </button>
 
                 </div>
-
             </div>
 
         </form>
-
     </div>
-
 </main>
 
 <?php require __DIR__ . '/../../includes/footer.php'; ?>
-

@@ -1,22 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Convert a verified Midtrans payment into a permanent booking.
- *
- * This function must only be called after the backend has verified
- * the Midtrans notification and fetched the actual transaction status.
- */
 function finalizeVerifiedMidtransPayment(
     PDO $pdo,
     array $transaction
 ): array {
-    /*
-    |--------------------------------------------------------------------------
-    | Validate verified transaction data
-    |--------------------------------------------------------------------------
-    */
-
+    // Validate verified transaction data.
     $orderId = $transaction['order_id'] ?? null;
     $transactionStatus = $transaction['transaction_status'] ?? '';
     $fraudStatus = $transaction['fraud_status'] ?? '';
@@ -65,12 +54,7 @@ function finalizeVerifiedMidtransPayment(
 
     $paidAmount = $amountWhole;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Begin transaction
-    |--------------------------------------------------------------------------
-    */
-
+    // Require this function to manage its own transaction.
     if ($pdo->inTransaction()) {
         throw new RuntimeException(
             'Payment finalization requires its own transaction.'
@@ -80,12 +64,7 @@ function finalizeVerifiedMidtransPayment(
     $pdo->beginTransaction();
 
     try {
-        /*
-        |--------------------------------------------------------------------------
-        | Find hold and its appointment time
-        |--------------------------------------------------------------------------
-        */
-
+        // Find the booking hold and appointment time.
         $findHold = $pdo->prepare("
             SELECT
                 bh.hold_id,
@@ -119,12 +98,7 @@ function finalizeVerifiedMidtransPayment(
             throw new RuntimeException('Booking hold not found.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Acquire the same hourly advisory lock used by booking creation
-        |--------------------------------------------------------------------------
-        */
-
+        // Acquire the same hourly advisory lock used by booking creation.
         $slotDate = (string) $initialHold['slot_date'];
         $startTime = (string) $initialHold['start_time'];
 
@@ -147,12 +121,7 @@ function finalizeVerifiedMidtransPayment(
             ':lock_key' => $lockKey
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lock the hold and recheck its current state
-        |--------------------------------------------------------------------------
-        */
-
+        // Lock the hold and recheck its current state.
         $lockHold = $pdo->prepare("
             SELECT
                 bh.*,
@@ -175,12 +144,7 @@ function finalizeVerifiedMidtransPayment(
             throw new RuntimeException('Booking hold no longer exists.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Verify order ID and amount
-        |--------------------------------------------------------------------------
-        */
-
+        // Verify order ID and amount.
         if (
             !is_string($hold['midtrans_order_id']) ||
             !hash_equals($hold['midtrans_order_id'], $orderId)
@@ -206,12 +170,7 @@ function finalizeVerifiedMidtransPayment(
             throw new RuntimeException('Paid amount does not match booking amount.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Idempotency: return an existing reservation
-        |--------------------------------------------------------------------------
-        */
-
+        // Return the existing reservation if this payment was already processed.
         if (
             $hold['hold_status'] === 'converted' &&
             !empty($hold['reservation_id'])
@@ -233,12 +192,7 @@ function finalizeVerifiedMidtransPayment(
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Verify that the temporary hold has not expired
-        |--------------------------------------------------------------------------
-        */
-
+        // Verify that the temporary hold has not expired.
         $expiryStmt = $pdo->prepare("
             SELECT expires_at > CURRENT_TIMESTAMP
             FROM booking_hold
@@ -257,16 +211,7 @@ function finalizeVerifiedMidtransPayment(
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Check hourly capacity
-        |--------------------------------------------------------------------------
-        |
-        | Maximum: 3 bookings per clock hour.
-        | Count both permanent active reservations and other active holds.
-        | Exclude the current hold because it is being converted.
-        */
-
+        // Check shared hourly booking capacity.
         $capacityStmt = $pdo->prepare("
             SELECT
                 (
@@ -309,12 +254,7 @@ function finalizeVerifiedMidtransPayment(
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Retrieve customer information
-        |--------------------------------------------------------------------------
-        */
-
+        // Retrieve customer information.
         $customerStmt = $pdo->prepare("
             SELECT
                 full_name,
@@ -334,15 +274,18 @@ function finalizeVerifiedMidtransPayment(
             throw new RuntimeException('Customer account not found.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Mark hold converted before inserting reservation
-        |--------------------------------------------------------------------------
-        |
-        | This update is inside the same transaction.
-        | If a later operation fails, the update is rolled back.
-        */
+        // Record the successful payment verification time using Jakarta time.
+        $verifiedAtStmt = $pdo->query("
+            SELECT clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+        ");
 
+        $verifiedAt = $verifiedAtStmt->fetchColumn();
+
+        if (!is_string($verifiedAt) || $verifiedAt === '') {
+            throw new RuntimeException('Unable to determine payment verification time.');
+        }
+
+        // Convert the temporary hold before creating the reservation.
         $convertHold = $pdo->prepare("
             UPDATE booking_hold
             SET
@@ -360,12 +303,7 @@ function finalizeVerifiedMidtransPayment(
             throw new RuntimeException('Unable to convert booking hold.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Create permanent reservation
-        |--------------------------------------------------------------------------
-        */
-
+        // Create permanent reservation.
         $reservationStmt = $pdo->prepare("
             INSERT INTO reservation (
                 user_id,
@@ -403,12 +341,7 @@ function finalizeVerifiedMidtransPayment(
 
         $reservationId = (int) $reservationStmt->fetchColumn();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Link converted hold to reservation
-        |--------------------------------------------------------------------------
-        */
-
+        // Link the converted hold to its permanent reservation.
         $linkStmt = $pdo->prepare("
             UPDATE booking_hold
             SET
@@ -422,18 +355,7 @@ function finalizeVerifiedMidtransPayment(
             ':hold_id' => $hold['hold_id']
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Create invoice
-        |--------------------------------------------------------------------------
-        |
-        | Current cancellation deadline policy:
-        | The appointment's scheduled start time.
-        |
-        | If your actual cancellation policy is different, change this
-        | calculation before using the payment flow in production.
-        */
-
+        // Create invoice with a seven-minute cancellation deadline.
         $invoiceStmt = $pdo->prepare("
             INSERT INTO invoice (
                 reservation_id,
@@ -448,30 +370,23 @@ function finalizeVerifiedMidtransPayment(
                 :customer_name,
                 :phone_number,
                 :total_payment,
-                CAST(:cancellation_deadline AS timestamp),
-                CURRENT_TIMESTAMP
+                CAST(:verified_at AS timestamp) + INTERVAL '7 minutes',
+                CAST(:verified_at AS timestamp)
             )
             RETURNING invoice_id
         ");
-
-        $cancellationDeadline = $slotDate . ' ' . $startTime;
 
         $invoiceStmt->execute([
             ':reservation_id' => $reservationId,
             ':customer_name' => $customer['full_name'],
             ':phone_number' => $customer['phone_number'],
             ':total_payment' => $hold['total_amount'],
-            ':cancellation_deadline' => $cancellationDeadline
+            ':verified_at' => $verifiedAt
         ]);
 
         $invoiceId = (int) $invoiceStmt->fetchColumn();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Create paid payment record
-        |--------------------------------------------------------------------------
-        */
-
+        // Create paid payment record using the same verification timestamp.
         $paymentStmt = $pdo->prepare("
             INSERT INTO payment (
                 reservation_id,
@@ -488,8 +403,8 @@ function finalizeVerifiedMidtransPayment(
                 'paid',
                 :amount,
                 :transaction_reference,
-                CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP
+                CAST(:verified_at AS timestamp),
+                CAST(:verified_at AS timestamp)
             )
             RETURNING payment_id
         ");
@@ -497,17 +412,13 @@ function finalizeVerifiedMidtransPayment(
         $paymentStmt->execute([
             ':reservation_id' => $reservationId,
             ':amount' => $hold['total_amount'],
-            ':transaction_reference' => $orderId
+            ':transaction_reference' => $orderId,
+            ':verified_at' => $verifiedAt
         ]);
 
         $paymentId = (int) $paymentStmt->fetchColumn();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Commit everything together
-        |--------------------------------------------------------------------------
-        */
-
+        // Commit the reservation, invoice, payment, and converted hold together.
         $pdo->commit();
 
         return [
