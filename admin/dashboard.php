@@ -58,9 +58,9 @@ if ($requestMethod === 'POST') {
 }
 
 try {
-    $statsStmt = $pdo->prepare("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE reservation_status = 'inactive') AS cancelled FROM reservation r JOIN time_slot ts ON ts.slot_id = r.slot_id WHERE ts.slot_date = CAST(:date AS date)");
-    $statsStmt->execute(['date' => $date]);
+    $statsStmt = $pdo->query("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE reservation_status = 'inactive') AS cancelled FROM reservation");
     $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+    $revenueTotal = (float) $pdo->query("SELECT COALESCE(SUM(amount), 0) FROM payment WHERE payment_status = 'paid'")->fetchColumn();
 
     $where = ['ts.slot_date = CAST(:date AS date)'];
     $params = ['date' => $date];
@@ -75,6 +75,7 @@ try {
     error_log('Admin dashboard data error: ' . $e->getMessage());
     $reservations = [];
     $stats = ['total' => 0, 'cancelled' => 0];
+    $revenueTotal = 0;
     $pageError = 'Data reservasi gagal dimuat.';
 }
 
@@ -107,19 +108,29 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
       </a>
     </div>
 
-    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
       <div class="bg-white rounded-2xl p-5 flex items-center justify-between shadow-sm">
         <div>
-          <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL RESERVATION</p>
+          <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL RESERVASI (ALL TIME)</p>
           <p class="text-4xl font-extrabold mt-1"><?= (int) $stats['total'] ?></p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-emerald-100 text-[#0d3b36] flex items-center justify-center">
           <span class="material-symbols-outlined">calendar_today</span>
         </div>
       </div>
+      <a href="reservations.php?date=<?= $escape($date) ?>" class="bg-white rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md hover:ring-2 hover:ring-emerald-700/15 transition focus:outline-none focus:ring-2 focus:ring-emerald-700" aria-label="Lihat analitik pemasukan dan reservasi">
+        <div>
+          <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL PEMASUKAN</p>
+          <p class="text-2xl sm:text-3xl font-extrabold mt-1">Rp <?= number_format($revenueTotal, 0, ',', '.') ?></p>
+          <p class="text-xs text-emerald-800 font-semibold mt-2">Lihat grafik &amp; reservasi <span aria-hidden="true">→</span></p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-100 text-[#0d3b36] flex items-center justify-center">
+          <span class="material-symbols-outlined">monitoring</span>
+        </div>
+      </a>
       <div class="bg-white rounded-2xl p-5 flex items-center justify-between shadow-sm">
         <div>
-          <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL CANCELED</p>
+          <p class="text-xs font-semibold tracking-wide text-slate-500">TOTAL DIBATALKAN (ALL TIME)</p>
           <p class="text-4xl font-extrabold mt-1"><?= (int) $stats['cancelled'] ?></p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
@@ -139,7 +150,7 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
         <label class="flex items-center gap-2 bg-[#f8f8fd] rounded-xl px-4 py-2.5 text-sm">
           <span class="material-symbols-outlined text-[18px] text-slate-500">calendar_month</span>
           <span class="text-slate-500">Tanggal:</span>
-          <input id="date-filter" name="date" type="date" value="<?= $escape($date) ?>" class="bg-transparent outline-none font-semibold">
+          <input id="date-filter" name="date" type="date" value="<?= $escape($date) ?>" onchange="this.form.requestSubmit()" class="bg-transparent outline-none font-semibold">
         </label>
         <div class="ml-auto flex items-center gap-3 text-xs text-slate-500">
           <span><?= count($reservations) ?> reservasi</span>
@@ -167,6 +178,7 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
             <?php else: foreach ($reservations as $reservation):
               $cancelled = $reservation['reservation_status'] === 'inactive';
               $paid = $reservation['payment_status'] === 'paid';
+              $refunded = $reservation['payment_status'] === 'refunded';
               $time = substr((string) $reservation['start_time'], 0, 5);
             ?>
               <tr class="reservation-row <?= $cancelled ? 'bg-red-50/60 text-slate-400' : 'hover:bg-slate-50' ?>"
@@ -180,13 +192,14 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
                 <td class="px-4 py-4"><p class="font-semibold <?= $cancelled ? 'line-through' : 'text-slate-900' ?>"><?= $escape($reservation['service_name']) ?></p><p class="text-xs text-slate-500">Reservasi #<?= (int) $reservation['reservation_id'] ?></p></td>
                 <td class="px-4 py-4 font-semibold">Rp <?= number_format((float) ($reservation['total_payment'] ?? $reservation['service_price'] ?? 0), 0, ',', '.') ?></td>
                 <td class="px-4 py-4">
-                  <?php if ($cancelled): ?><span class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">Dibatalkan</span>
-                  <?php elseif ($paid): ?><span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Lunas (Tunai)</span>
-                  <?php else: ?><span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">Belum Bayar</span><?php endif; ?>
+                  <?php if ($refunded): ?><span class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">Refund</span>
+                  <?php elseif ($cancelled): ?><span class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">Dibatalkan</span>
+                  <?php elseif ($paid): ?><span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Lunas</span>
+                  <?php else: ?><span class="text-slate-400" aria-label="Belum lunas atau refund">—</span><?php endif; ?>
                 </td>
                 <td class="px-4 py-4 text-right"><div class="flex justify-end gap-2">
                   <button type="button" data-act="detail" class="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-slate-700">Detail</button>
-                  <?php if (!$cancelled && !$paid): ?><button type="button" data-act="pay" class="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white">Catat Tunai</button><?php endif; ?>
+                  <?php if (!$cancelled && !$paid && !$refunded): ?><button type="button" data-act="pay" class="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white">Catat Tunai</button><?php endif; ?>
                   <?php if (!$cancelled): ?><button type="button" data-act="cancel" class="p-1 text-red-600" aria-label="Batalkan"><span class="material-symbols-outlined text-[18px]">close</span></button>
                   <?php elseif ($paid): ?><a href="refunds.php?q=<?= (int) $reservation['reservation_id'] ?>" class="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">Lihat Refund</a><?php endif; ?>
                 </div></td>
