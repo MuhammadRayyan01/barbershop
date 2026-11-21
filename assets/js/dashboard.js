@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const dashboardName = document.getElementById('dashboard-nama');
@@ -91,10 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function getRefundStatusText(status) {
 
         const refundStatuses = {
-            not_requested: 'Belum ada permintaan refund',
-            pending: 'Refund sedang diproses',
-            completed: 'Refund berhasil',
-            failed: 'Refund gagal'
+            not_requested: 'Belum ada permintaan pengembalian dana',
+            pending: 'Pengembalian dana sedang diproses',
+            completed: 'Dana berhasil dikembalikan',
+            failed: 'Pengembalian dana gagal, silakan hubungi barbershop'
         };
 
         return refundStatuses[status] ||
@@ -172,22 +173,252 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function cancelReservation(reservationId, button) {
+    // Show the custom cancellation confirmation modal.
+    function showCancellationConfirmation() {
+
+        return new Promise((resolve) => {
+
+            const overlay = document.createElement('div');
+
+            overlay.className =
+                'fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4';
+
+            const modal = document.createElement('div');
+
+            modal.className =
+                'w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl';
+
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'cancel-modal-title');
+
+            const title = document.createElement('h2');
+
+            title.id = 'cancel-modal-title';
+            title.className = 'text-lg font-bold text-[#123f3a]';
+            title.textContent = 'Batalkan Reservasi?';
+
+            const description = document.createElement('p');
+
+            description.className =
+                'mt-4 text-sm leading-relaxed text-gray-600';
+
+            description.textContent =
+                'Apakah Anda yakin ingin membatalkan reservasi ini dan mengajukan refund?';
+
+            const actions = document.createElement('div');
+
+            actions.className =
+                'mt-4 flex items-center justify-end gap-3';
+
+            const cancelButton = document.createElement('button');
+
+            cancelButton.type = 'button';
+
+            cancelButton.className =
+                'rounded-lg px-4 py-2 text-sm font-semibold text-[#123f3a] hover:bg-gray-100 transition';
+
+            cancelButton.textContent = 'Batal';
+
+            const confirmButton = document.createElement('button');
+
+            confirmButton.type = 'button';
+
+            confirmButton.className =
+                'rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition';
+
+            confirmButton.textContent = 'Ya, Batalkan';
+
+            actions.append(cancelButton, confirmButton);
+
+            modal.append(title, description, actions);
+
+            overlay.appendChild(modal);
+
+            document.body.appendChild(overlay);
+
+            function closeModal(confirmed) {
+
+                document.removeEventListener('keydown', handleKeydown);
+
+                overlay.remove();
+
+                resolve(confirmed);
+            }
+
+            function handleKeydown(event) {
+
+                if (event.key === 'Escape') {
+                    closeModal(false);
+                }
+            }
+
+            cancelButton.addEventListener('click', () => {
+                closeModal(false);
+            });
+
+            confirmButton.addEventListener('click', () => {
+                closeModal(true);
+            });
+
+            overlay.addEventListener('click', (event) => {
+
+                if (event.target === overlay) {
+                    closeModal(false);
+                }
+            });
+
+            document.addEventListener('keydown', handleKeydown);
+
+            cancelButton.focus();
+        });
+    }
+
+    // Show a custom success or error notification modal.
+    function showCancellationMessage(
+        message,
+        titleText = 'Pemberitahuan'
+    ) {
+
+        return new Promise((resolve) => {
+
+            const overlay = document.createElement('div');
+
+            overlay.className =
+                'fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4';
+
+            const modal = document.createElement('div');
+
+            modal.className =
+                'w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl';
+
+            modal.setAttribute('role', 'alertdialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'cancel-message-title');
+
+            const title = document.createElement('h2');
+
+            title.id = 'cancel-message-title';
+            title.className = 'text-lg font-bold text-[#123f3a]';
+            title.textContent = titleText;
+
+            const description = document.createElement('p');
+
+            description.className =
+                'mt-4 text-sm leading-relaxed text-gray-600';
+
+            description.textContent = message;
+
+            const actions = document.createElement('div');
+
+            actions.className =
+                'mt-4 flex items-center justify-end';
+
+            const okButton = document.createElement('button');
+
+            okButton.type = 'button';
+
+            okButton.className =
+                'rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition';
+
+            okButton.textContent = 'OK';
+
+            actions.appendChild(okButton);
+
+            modal.append(title, description, actions);
+
+            overlay.appendChild(modal);
+
+            document.body.appendChild(overlay);
+
+            function closeModal() {
+
+                document.removeEventListener('keydown', handleKeydown);
+
+                overlay.remove();
+
+                resolve();
+            }
+
+            function handleKeydown(event) {
+
+                if (event.key === 'Escape' || event.key === 'Enter') {
+                    closeModal();
+                }
+            }
+
+            okButton.addEventListener('click', closeModal);
+
+            overlay.addEventListener('click', (event) => {
+
+                if (event.target === overlay) {
+                    closeModal();
+                }
+            });
+
+            document.addEventListener('keydown', handleKeydown);
+
+            okButton.focus();
+        });
+    }
+
+    // Describe the outcome of a cancellation in the customer's own language.
+    function getCancellationOutcome(result) {
+
+        if (
+            result.payment_status === 'refunded' ||
+            result.refund_status === 'completed'
+        ) {
+            return {
+                title: 'Pembatalan Berhasil',
+                message: 'Dana berhasil dikembalikan.'
+            };
+        }
+
+        if (result.refund_status === 'pending') {
+            return {
+                title: 'Permintaan Diproses',
+                message: 'Permintaan pembatalan diproses. Pengembalian dana sedang diproses.'
+            };
+        }
+
+        if (result.payment_status === 'cancelled') {
+            return {
+                title: 'Pembatalan Berhasil',
+                message: 'Pembayaran dibatalkan. Bank Anda mungkin memerlukan hingga satu hari kerja untuk mengembalikan limit kartu.'
+            };
+        }
+
+        return {
+            title: 'Pembatalan Berhasil',
+            message: result.message ||
+                'Permintaan pembatalan berhasil dikirim.'
+        };
+    }
+
+    // Send the cancellation request to the backend.
+    // isRetry re-checks a refund that is already pending; the backend reuses
+    // the stored refund key, so it never creates a second refund.
+    async function cancelReservation(reservationId, button, isRetry = false) {
 
         if (!csrfToken) {
             alert('Token keamanan tidak ditemukan. Silakan muat ulang halaman.');
             return;
         }
 
-        const confirmed = window.confirm(
-            'Apakah Anda yakin ingin membatalkan reservasi ini dan mengajukan refund?'
-        );
+        if (!isRetry) {
 
-        if (!confirmed) {
-            return;
+            const confirmed = await showCancellationConfirmation();
+
+            if (!confirmed) {
+                return;
+            }
         }
 
+        const originalLabel = button.textContent;
+
         button.disabled = true;
+
         button.textContent = 'Memproses...';
 
         try {
@@ -222,9 +453,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             }
 
-            alert(
-                result.message ||
-                'Permintaan pembatalan berhasil dikirim. Refund sedang diproses.'
+            const outcome = getCancellationOutcome(result);
+
+            await showCancellationMessage(
+                outcome.message,
+                outcome.title
             );
 
             await loadReservations();
@@ -233,16 +466,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.error('Cancellation error:', error);
 
-            alert(
+            await showCancellationMessage(
                 error.message ||
-                'Terjadi kesalahan saat membatalkan reservasi.'
+                'Terjadi kesalahan saat membatalkan reservasi.',
+                'Pembatalan Gagal'
             );
 
             button.disabled = false;
-            button.textContent = 'Batalkan Reservasi';
+
+            button.textContent = originalLabel;
         }
     }
 
+    // Load the customer's reservation data.
     async function loadReservations() {
 
         if (!reservationContainer) {
@@ -299,16 +535,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const pendingPayments = reservations.filter(
                 (reservation) => {
+
                     return reservation.payment_status === 'pending';
                 }
             );
 
             if (reservationCount) {
+
                 reservationCount.textContent =
                     upcomingReservations.length;
             }
 
             if (pendingPaymentCount) {
+
                 pendingPaymentCount.textContent =
                     pendingPayments.length;
             }
@@ -385,14 +624,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 payment.textContent =
                     `Total: ${formatRupiah(total)}`;
 
+                    const paymentStatuses = {
+                    pending: 'Menunggu pembayaran',
+                    paid: 'Pembayaran berhasil',
+                    cancelled: 'Pembayaran dibatalkan',
+                    refunded: 'Pembayaran telah dikembalikan',
+                    failed: 'Pembayaran gagal',
+                    'verification pending': 'Pembayaran sedang diverifikasi'
+                };
+
                 const status = document.createElement('p');
 
                 status.className = 'text-xs text-gray-500';
 
                 status.textContent =
                     `Status pembayaran: ${
-                        reservation.payment_status ||
-                        'Belum ada data pembayaran'
+                        paymentStatuses[reservation.payment_status] ||
+                        'Status pembayaran belum tersedia'
                     }`;
 
                 details.append(
@@ -462,7 +710,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const refundStatus = document.createElement('p');
 
                     refundStatus.className =
-                        'text-xs font-semibold text-amber-700 mt-3';
+                                'text-xs font-semibold mt-3';
+
+                            if (reservation.refund_status === 'completed') {
+                                refundStatus.classList.add('text-green-700');
+                            } else if (reservation.refund_status === 'failed') {
+                                refundStatus.classList.add('text-red-600');
+                            } else {
+                                refundStatus.classList.add('text-amber-700');
+}
 
                     refundStatus.textContent =
                         getRefundStatusText(reservation.refund_status);
@@ -491,7 +747,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     card.appendChild(cancelButton);
 
-                } else if (hasPaidDeadline) {
+                } else if (canCancelReservation(reservation.can_retry_refund)) {
+
+                    // The refund was requested but is not confirmed yet. Checking
+                    // again is safe: the backend reuses the stored refund key.
+                    const retryButton = document.createElement('button');
+
+                    retryButton.type = 'button';
+
+                    retryButton.className =
+                        'mt-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 disabled:opacity-50 text-sm font-semibold px-4 py-2 transition';
+
+                    retryButton.textContent = 'Periksa Status Pengembalian Dana';
+
+                    retryButton.addEventListener('click', () => {
+
+                        cancelReservation(
+                            reservation.reservation_id,
+                            retryButton,
+                            true
+                        );
+                    });
+
+                    card.appendChild(retryButton);
+
+                } else if (
+                    hasPaidDeadline &&
+                    reservation.refund_status === 'not_requested'
+                ) {
 
                     const expiredMessage = document.createElement('p');
 
