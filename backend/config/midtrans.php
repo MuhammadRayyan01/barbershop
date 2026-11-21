@@ -209,6 +209,59 @@ function midtransGetTransactionStatus(string $orderId): array
     );
 }
 
+// Request a refund from Midtrans.
+function midtransRequestRefund(
+    string $transactionIdentifier,
+    array $payload
+): array {
+    if ($transactionIdentifier === '') {
+        throw new InvalidArgumentException(
+            'Transaction identifier cannot be empty.'
+        );
+    }
+
+    if (
+        !isset($payload['refund_key']) ||
+        !is_string($payload['refund_key']) ||
+        $payload['refund_key'] === ''
+    ) {
+        throw new InvalidArgumentException(
+            'A valid refund key is required.'
+        );
+    }
+
+    if (
+        !isset($payload['amount']) ||
+        !is_numeric($payload['amount']) ||
+        (float) $payload['amount'] <= 0
+    ) {
+        throw new InvalidArgumentException(
+            'A valid refund amount is required.'
+        );
+    }
+
+    return midtransApiRequest(
+        'POST',
+        '/v2/' . rawurlencode($transactionIdentifier) . '/refund',
+        $payload
+    );
+}
+
+// Cancel a transaction that has not reached a refundable state.
+function midtransCancelTransaction(string $orderId): array
+{
+    if ($orderId === '') {
+        throw new InvalidArgumentException(
+            'Order ID cannot be empty.'
+        );
+    }
+
+    return midtransApiRequest(
+        'POST',
+        '/v2/' . rawurlencode($orderId) . '/cancel'
+    );
+}
+
 /*
 |--------------------------------------------------------------------------
 | Verify Midtrans notification signature
