@@ -24,6 +24,11 @@ require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <main class="max-w-3xl w-full mx-auto my-8 space-y-4">
+    <input
+    type="hidden"
+    id="dashboard-csrf-token"
+    value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>"
+>
 
     <section
         class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 space-y-6"
@@ -85,7 +90,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 Reservasi Mendatang
             </h2>
 
-            <div id="reservasi-container">
+           <div id="reservasi-container" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                 <p class="text-sm text-gray-500">
                     Memuat data reservasi...
                 </p>
