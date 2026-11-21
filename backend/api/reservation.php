@@ -11,13 +11,15 @@ $method = $_SERVER['REQUEST_METHOD'] ?? '';
 
 if (!in_array($method, ['GET', 'POST'], true)) {
     header('Allow: GET, POST');
+
     jsonResponse(405, [
         'success' => false,
         'message' => 'Method not allowed.'
     ]);
 }
 
-if ($method === 'GET') { 
+// Get customer reservations.
+if ($method === 'GET') {
     try {
         $stmt = $pdo->prepare("
             SELECT
@@ -30,7 +32,24 @@ if ($method === 'GET') {
                 ts.slot_date,
                 ts.start_time,
                 ts.end_time,
-                ads.additional_service_name
+                ads.additional_service_name,
+                COALESCE(
+                    i.total_payment,
+                    COALESCE(r.service_price, 0) +
+                    COALESCE(r.additional_service_price, 0)
+                ) AS total_payment,
+                i.cancellation_deadline,
+                p.payment_status::text AS payment_status,
+                p.refund_status,
+                CASE
+                    WHEN
+                        r.reservation_status = 'active'
+                        AND p.payment_status = 'paid'
+                        AND p.refund_status = 'not_requested'
+                        AND CURRENT_TIMESTAMP < i.cancellation_deadline
+                    THEN TRUE
+                    ELSE FALSE
+                END AS can_cancel
             FROM reservation r
             JOIN service s
                 ON s.service_id = r.service_id
@@ -38,6 +57,10 @@ if ($method === 'GET') {
                 ON ts.slot_id = r.slot_id
             LEFT JOIN additional_service ads
                 ON ads.additional_service_id = r.additional_service_id
+            LEFT JOIN invoice i
+                ON i.reservation_id = r.reservation_id
+            LEFT JOIN payment p
+                ON p.reservation_id = r.reservation_id
             WHERE r.user_id = :user_id
             ORDER BY ts.slot_date DESC, ts.start_time DESC
         ");
@@ -50,6 +73,7 @@ if ($method === 'GET') {
             'success' => true,
             'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
         ]);
+
     } catch (PDOException $e) {
         error_log('Reservation list API error: ' . $e->getMessage());
 
@@ -60,6 +84,7 @@ if ($method === 'GET') {
     }
 }
 
+// Load request and CSRF dependencies for POST.
 require_once __DIR__ . '/../config/request.php';
 require_once __DIR__ . '/../config/csrf.php';
 
@@ -110,28 +135,40 @@ try {
         ($bookingDraft['service_id'] ?? null) === $serviceId &&
         ($bookingDraft['slot_id'] ?? null) === $slotId
     ) {
-        $existingStmt = $pdo->prepare("SELECT reservation_id, slot_id, service_id,
-                service_price, additional_service_id, additional_service_price,
-                reservation_status, created_at
+        $existingStmt = $pdo->prepare("
+            SELECT
+                reservation_id,
+                slot_id,
+                service_id,
+                service_price,
+                additional_service_id,
+                additional_service_price,
+                reservation_status,
+                created_at
             FROM reservation
             WHERE reservation_id = :reservation_id
               AND user_id = :user_id
               AND slot_id = :slot_id
               AND service_id = :service_id
-              AND reservation_status = 'active'");
+              AND reservation_status = 'active'
+        ");
+
         $existingStmt->execute([
             'reservation_id' => $draftReservationId,
             'user_id' => $authenticatedUserId,
             'slot_id' => $slotId,
             'service_id' => $serviceId,
         ]);
+
         $existingReservation = $existingStmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existingReservation) {
             jsonResponse(200, [
                 'success' => true,
                 'message' => 'Using the existing reservation.',
-                'data' => ['reservation' => $existingReservation],
+                'data' => [
+                    'reservation' => $existingReservation
+                ],
             ]);
         }
 
@@ -141,7 +178,9 @@ try {
     $pdo->beginTransaction();
 
     $slotStmt = $pdo->prepare("
-        SELECT slot_id, is_available::text AS is_available
+        SELECT
+            slot_id,
+            is_available::text AS is_available
         FROM time_slot
         WHERE slot_id = :slot_id
           AND (
@@ -159,6 +198,7 @@ try {
     ]);
 
     $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
+
     if (!$slot || $slot['is_available'] !== 'available') {
         $pdo->rollBack();
 
@@ -190,33 +230,35 @@ try {
         ]);
     }
 
-   $availabilityStmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM reservation
-    WHERE slot_id = :slot_id
-      AND reservation_status = 'active'
-");
+    $availabilityStmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM reservation
+        WHERE slot_id = :slot_id
+          AND reservation_status = 'active'
+    ");
 
-$availabilityStmt->execute([
-    'slot_id' => $slotId
-]);
-
-$bookingCount = (int) $availabilityStmt->fetchColumn();
-
-if ($bookingCount >= BOOKING_SLOT_CAPACITY) {
-    $pdo->rollBack();
-
-    jsonResponse(409, [
-        'success' => false,
-        'message' => 'This time slot is fully booked.'
+    $availabilityStmt->execute([
+        'slot_id' => $slotId
     ]);
-}
+
+    $bookingCount = (int) $availabilityStmt->fetchColumn();
+
+    if ($bookingCount >= BOOKING_SLOT_CAPACITY) {
+        $pdo->rollBack();
+
+        jsonResponse(409, [
+            'success' => false,
+            'message' => 'This time slot is fully booked.'
+        ]);
+    }
 
     $additionalPrice = null;
 
     if ($additionalServiceId !== null) {
         $additionalStmt = $pdo->prepare("
-            SELECT additional_service_id, additional_service_price
+            SELECT
+                additional_service_id,
+                additional_service_price
             FROM additional_service
             WHERE additional_service_id = :additional_service_id
               AND (
@@ -263,10 +305,15 @@ if ($bookingCount >= BOOKING_SLOT_CAPACITY) {
             :additional_service_price,
             'active'
         )
-        RETURNING reservation_id, slot_id, service_id,
-                  service_price, additional_service_id,
-                  additional_service_price, reservation_status,
-                  created_at
+        RETURNING
+            reservation_id,
+            slot_id,
+            service_id,
+            service_price,
+            additional_service_id,
+            additional_service_price,
+            reservation_status,
+            created_at
     ");
 
     $insertStmt->execute([
@@ -280,78 +327,83 @@ if ($bookingCount >= BOOKING_SLOT_CAPACITY) {
 
     $reservation = $insertStmt->fetch(PDO::FETCH_ASSOC);
 
-$customerStmt = $pdo->prepare("
-    SELECT full_name, phone_number
-    FROM users
-    WHERE user_id = :user_id
-");
+    $customerStmt = $pdo->prepare("
+        SELECT full_name, phone_number
+        FROM users
+        WHERE user_id = :user_id
+    ");
 
-$customerStmt->execute([
-    'user_id' => $authenticatedUserId
-]);
-
-$customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$customer || trim($customer['phone_number']) === '') {
-    $pdo->rollBack();
-
-    jsonResponse(422, [
-        'success' => false,
-        'message' => 'Customer name or phone number is unavailable.'
+    $customerStmt->execute([
+        'user_id' => $authenticatedUserId
     ]);
-}
 
-// Calculate the total payment
-$totalPayment = number_format(
-    (float) $reservation['service_price'] +
-    (float) ($reservation['additional_service_price'] ?? 0),
-    2,
-    '.',
-    ''
-);
+    $customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
 
+    if (!$customer || trim($customer['phone_number']) === '') {
+        $pdo->rollBack();
 
-$invoiceStmt = $pdo->prepare("
-    INSERT INTO invoice (
-        reservation_id,
-        customer_name,
-        phone_number,
-        total_payment,
-        cancellation_deadline
-    )
-    VALUES (
-        :reservation_id,
-        :customer_name,
-        :phone_number,
-        :total_payment,
-        CURRENT_TIMESTAMP + INTERVAL '1 hour'
-    )
-    RETURNING
-        invoice_id,
-        reservation_id,
-        customer_name,
-        phone_number,
-        total_payment,
-        cancellation_deadline,
-        created_at
-");
+        jsonResponse(422, [
+            'success' => false,
+            'message' => 'Customer name or phone number is unavailable.'
+        ]);
+    }
 
-$invoiceStmt->execute([
-    'reservation_id' => $reservation['reservation_id'],
-    'customer_name' => $customer['full_name'],
-    'phone_number' => $customer['phone_number'],
-    'total_payment' => $totalPayment
-]);
+    // Calculate the total payment.
+    $totalPayment = number_format(
+        (float) $reservation['service_price'] +
+        (float) ($reservation['additional_service_price'] ?? 0),
+        2,
+        '.',
+        ''
+    );
 
-$invoice = $invoiceStmt->fetch(PDO::FETCH_ASSOC);
+    $invoiceStmt = $pdo->prepare("
+        INSERT INTO invoice (
+            reservation_id,
+            customer_name,
+            phone_number,
+            total_payment,
+            cancellation_deadline
+        )
+        VALUES (
+            :reservation_id,
+            :customer_name,
+            :phone_number,
+            :total_payment,
+            CURRENT_TIMESTAMP + INTERVAL '1 hour'
+        )
+        RETURNING
+            invoice_id,
+            reservation_id,
+            customer_name,
+            phone_number,
+            total_payment,
+            cancellation_deadline,
+            created_at
+    ");
+
+    $invoiceStmt->execute([
+        'reservation_id' => $reservation['reservation_id'],
+        'customer_name' => $customer['full_name'],
+        'phone_number' => $customer['phone_number'],
+        'total_payment' => $totalPayment
+    ]);
+
+    $invoice = $invoiceStmt->fetch(PDO::FETCH_ASSOC);
 
     $pdo->commit();
-    $_SESSION['booking_draft']['reservation_id'] = (int) $reservation['reservation_id'];
+
+    $_SESSION['booking_draft']['reservation_id'] =
+        (int) $reservation['reservation_id'];
 
     jsonResponse(201, [
         'success' => true,
         'message' => 'Reservation created successfully.',
-        'data' => ['reservation' => $reservation, 'invoice' => $invoice] ]);
+        'data' => [
+            'reservation' => $reservation,
+            'invoice' => $invoice
+        ]
+    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
