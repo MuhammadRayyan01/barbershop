@@ -5,6 +5,8 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/booking.php';
+require_once __DIR__ . '/../config/midtrans.php';
+require_once __DIR__ . '/../config/refund_reconciliation.php';
 require_once __DIR__ . '/../middleware/auth_require.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
@@ -20,6 +22,9 @@ if (!in_array($method, ['GET', 'POST'], true)) {
 
 // Get customer reservations.
 if ($method === 'GET') {
+    // Finish refunds the bank has already confirmed, without waiting for a webhook.
+    reconcilePendingRefundsForCustomer($pdo, (int) $authenticatedUserId);
+
     try {
         $stmt = $pdo->prepare("
             SELECT
@@ -46,10 +51,19 @@ if ($method === 'GET') {
                         r.reservation_status = 'active'
                         AND p.payment_status = 'paid'
                         AND p.refund_status = 'not_requested'
-                        AND CURRENT_TIMESTAMP < i.cancellation_deadline
+                        AND (clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
+                            < i.cancellation_deadline
                     THEN TRUE
                     ELSE FALSE
-                END AS can_cancel
+                END AS can_cancel,
+                CASE
+                    WHEN
+                        r.reservation_status = 'active'
+                        AND p.payment_status = 'paid'
+                        AND p.refund_status = 'pending'
+                    THEN TRUE
+                    ELSE FALSE
+                END AS can_retry_refund
             FROM reservation r
             JOIN service s
                 ON s.service_id = r.service_id
