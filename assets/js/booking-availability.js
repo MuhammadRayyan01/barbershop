@@ -717,7 +717,7 @@
             'col-span-full mt-2 text-[11px] text-gray-500';
 
         information.textContent =
-            'Kapasitas maksimal 3 pelanggan per jam. Dua slot 30 menit dalam satu jam berbagi kapasitas yang sama.';
+            'Waktu mulai tersedia setiap 1 jam. Kapasitas tiap jam mengikuti jumlah barber yang bertugas.';
 
         timeGroup.append(information);
 
