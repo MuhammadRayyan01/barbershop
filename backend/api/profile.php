@@ -258,6 +258,13 @@ try {
             ]);
         }
 
+        if (password_verify($newPassword, $currentProfile['password_hash'])) {
+            jsonResponse(422, [
+                'success' => false,
+                'message' => 'The new password must be different from your current password.'
+            ]);
+        }
+
         $newPasswordHash = password_hash(
             $newPassword,
             PASSWORD_DEFAULT
