@@ -48,6 +48,7 @@ create table if not exists time_slot(
         start_time time not null,
         end_time time not null,
         is_available slot_status default 'available' not null,
+        booking_capacity smallint not null default 3 check (booking_capacity between 0 and 3),
 
         constraint check_slot_time check(end_time > start_time),
         constraint unique_slot_datetime unique(slot_date, start_time, end_time)

@@ -6,8 +6,8 @@ declare(strict_types=1);
 | Booking configuration
 |--------------------------------------------------------------------------
 |
-| Each clock hour has a maximum capacity of 3 bookings.
-| The two 30-minute slots within that hour share this capacity.
+| Each booking is a one-hour time block. Admins can lower the capacity
+| for each clock hour to match the number of barbers on duty.
 |
 */
 
@@ -17,7 +17,7 @@ const BOOKING_HOLD_DURATION_MINUTES = 5;
 const BOOKING_OPENING_TIME = '10:00:00';
 const BOOKING_CLOSING_TIME = '22:00:00';
 
-const BOOKING_SLOT_INTERVAL_MINUTES = 30;
+const BOOKING_SLOT_INTERVAL_MINUTES = 60;
 
 const BOOKING_TIMEZONE = 'Asia/Jakarta';
 
@@ -27,7 +27,7 @@ const BOOKING_TIMEZONE = 'Asia/Jakarta';
 | Generate time slots for a date
 |--------------------------------------------------------------------------
 |
-| Creates 30-minute slots from 10:00 until 22:00.
+| Creates one-hour slots from 10:00 until 22:00.
 | Existing slots are not duplicated.
 |
 */
@@ -53,11 +53,11 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
         SELECT
             CAST(:slot_date AS date),
             times.start_time::time,
-            (times.start_time + INTERVAL '30 minutes')::time
+            (times.start_time + INTERVAL '60 minutes')::time
         FROM generate_series(
             TIMESTAMP '2000-01-01 10:00:00',
-            TIMESTAMP '2000-01-01 21:30:00',
-            INTERVAL '30 minutes'
+            TIMESTAMP '2000-01-01 21:00:00',
+            INTERVAL '60 minutes'
         ) AS times(start_time)
         ON CONFLICT (slot_date, start_time, end_time)
         DO NOTHING"
@@ -100,7 +100,7 @@ function expireBookingHolds(PDO $pdo): int
 | Lock a date and clock hour
 |--------------------------------------------------------------------------
 |
-| Both 10:00 and 10:30 use the same lock.
+| Each hour uses one lock, so simultaneous requests cannot exceed its capacity.
 | This prevents simultaneous requests from exceeding hourly capacity.
 |
 | IMPORTANT:
@@ -193,6 +193,32 @@ function getBookingSlot(PDO $pdo, int $slotId): ?array
 }
 
 
+/**
+ * Only full-hour slots are bookable through the current customer flow.
+ * Legacy half-hour rows remain in the database to preserve old reservations.
+ */
+function isBookableHourlySlot(array $slot): bool
+{
+    $startText = substr(trim((string) ($slot['start_time'] ?? '')), 0, 8);
+    $endText = substr(trim((string) ($slot['end_time'] ?? '')), 0, 8);
+    if (strlen($startText) === 5) $startText .= ':00';
+    if (strlen($endText) === 5) $endText .= ':00';
+
+    $start = DateTimeImmutable::createFromFormat('!H:i:s', $startText);
+    $end = DateTimeImmutable::createFromFormat('!H:i:s', $endText);
+
+    if ($start === false || $end === false || $start->format('i:s') !== '00:00') {
+        return false;
+    }
+
+    $expectedEnd = $start
+        ->modify('+' . BOOKING_SLOT_INTERVAL_MINUTES . ' minutes')
+        ->format('H:i:s');
+
+    return $end->format('H:i:s') === $expectedEnd;
+}
+
+
 /*
 |--------------------------------------------------------------------------
 | Calculate shared hourly capacity
@@ -202,7 +228,8 @@ function getBookingSlot(PDO $pdo, int $slotId): ?array
 | 1. Active permanent reservations.
 | 2. Active temporary holds that have not expired.
 |
-| Both half-hour slots share the same result.
+| All reservations and active holds that start within that clock hour share
+| the hour's capacity, including any legacy half-hour slots already booked.
 |
 */
 
@@ -211,6 +238,19 @@ function getBookingHourCapacity(
     string $slotDate,
     string $startTime
 ): array {
+    $capacityStmt = $pdo->prepare(
+        "SELECT COALESCE(MIN(booking_capacity), CAST(:default_capacity AS smallint))
+         FROM time_slot
+         WHERE slot_date = CAST(:slot_date AS date)
+           AND EXTRACT(HOUR FROM start_time) = EXTRACT(HOUR FROM CAST(:start_time AS time))"
+    );
+    $capacityStmt->execute([
+        'default_capacity' => BOOKING_SLOT_CAPACITY,
+        'slot_date' => $slotDate,
+        'start_time' => $startTime,
+    ]);
+    $hourCapacity = (int) $capacityStmt->fetchColumn();
+
     $reservationStmt = $pdo->prepare(
         "SELECT COUNT(*)
          FROM reservation r
@@ -253,14 +293,14 @@ function getBookingHourCapacity(
     $totalUsed = $bookedCount + $heldCount;
 
     return [
-        'capacity' => BOOKING_SLOT_CAPACITY,
+        'capacity' => $hourCapacity,
         'booked_count' => $bookedCount,
         'held_count' => $heldCount,
         'used_count' => $totalUsed,
         'available_count' => max(
             0,
-            BOOKING_SLOT_CAPACITY - $totalUsed
+            $hourCapacity - $totalUsed
         ),
-        'is_full' => $totalUsed >= BOOKING_SLOT_CAPACITY
+        'is_full' => $totalUsed >= $hourCapacity
     ];
 }

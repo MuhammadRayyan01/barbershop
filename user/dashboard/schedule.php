@@ -25,22 +25,84 @@ $slotsByDate = [];
 $pageError = '';
 
 try {
-    $stmt = $pdo->prepare("SELECT ts.slot_id, ts.slot_date, ts.start_time, ts.end_time,
-            ts.is_available,
-            COUNT(r.reservation_id) FILTER (WHERE r.reservation_status = 'active') AS booked_count
-        FROM time_slot ts
-        LEFT JOIN reservation r ON r.slot_id = ts.slot_id
-        WHERE ts.slot_date >= CAST(:month_start AS date)
-          AND ts.slot_date < CAST(:month_end AS date)
-        GROUP BY ts.slot_id
-        ORDER BY ts.slot_date, ts.start_time");
+    $generationDate = $monthStart < $today ? $today : $monthStart;
+    while ($generationDate < $monthEnd) {
+        ensureTimeSlotsForDate($pdo, $generationDate->format('Y-m-d'));
+        $generationDate = $generationDate->modify('+1 day');
+    }
+
+    $stmt = $pdo->prepare("WITH hourly_slots AS (
+            SELECT slot_date, MIN(slot_id)::integer AS slot_id,
+                   MIN(start_time) AS start_time, MAX(end_time) AS end_time
+            FROM time_slot
+            WHERE slot_date >= CAST(:month_start AS date)
+              AND slot_date < CAST(:month_end AS date)
+              AND EXTRACT(MINUTE FROM start_time) = 0
+              AND end_time = (start_time + INTERVAL '60 minutes')::time
+            GROUP BY slot_date, start_time
+        ), hour_settings AS (
+            SELECT slot_date, EXTRACT(HOUR FROM start_time)::integer AS hour_num,
+                   MIN(booking_capacity)::integer AS capacity,
+                   BOOL_AND(is_available::text = 'available') AS is_available
+            FROM time_slot
+            WHERE slot_date >= CAST(:settings_start AS date)
+              AND slot_date < CAST(:settings_end AS date)
+            GROUP BY slot_date, EXTRACT(HOUR FROM start_time)
+        ), reservation_counts AS (
+            SELECT ts.slot_date, EXTRACT(HOUR FROM ts.start_time)::integer AS hour_num,
+                   COUNT(*)::integer AS booked_count
+            FROM reservation r
+            INNER JOIN time_slot ts ON ts.slot_id = r.slot_id
+            WHERE r.reservation_status = 'active'
+              AND ts.slot_date >= CAST(:reservation_start AS date)
+              AND ts.slot_date < CAST(:reservation_end AS date)
+            GROUP BY ts.slot_date, EXTRACT(HOUR FROM ts.start_time)
+        ), hold_counts AS (
+            SELECT ts.slot_date, EXTRACT(HOUR FROM ts.start_time)::integer AS hour_num,
+                   COUNT(*)::integer AS held_count
+            FROM booking_hold bh
+            INNER JOIN time_slot ts ON ts.slot_id = bh.slot_id
+            WHERE bh.hold_status = 'active'
+              AND bh.expires_at > CURRENT_TIMESTAMP
+              AND ts.slot_date >= CAST(:hold_start AS date)
+              AND ts.slot_date < CAST(:hold_end AS date)
+            GROUP BY ts.slot_date, EXTRACT(HOUR FROM ts.start_time)
+        )
+        SELECT hs.slot_id, hs.slot_date, hs.start_time, hs.end_time,
+               CASE WHEN cfg.is_available THEN 'available' ELSE 'not available' END AS is_available,
+               cfg.capacity,
+               (COALESCE(rc.booked_count, 0) + COALESCE(hc.held_count, 0))::integer AS booked_count
+        FROM hourly_slots hs
+        INNER JOIN hour_settings cfg
+            ON cfg.slot_date = hs.slot_date
+           AND cfg.hour_num = EXTRACT(HOUR FROM hs.start_time)::integer
+        LEFT JOIN reservation_counts rc
+            ON rc.slot_date = hs.slot_date
+           AND rc.hour_num = cfg.hour_num
+        LEFT JOIN hold_counts hc
+            ON hc.slot_date = hs.slot_date
+           AND hc.hour_num = cfg.hour_num
+        ORDER BY hs.slot_date, hs.start_time");
     $stmt->execute([
         'month_start' => $monthStart->format('Y-m-d'),
         'month_end' => $monthEnd->format('Y-m-d'),
+        'settings_start' => $monthStart->format('Y-m-d'),
+        'settings_end' => $monthEnd->format('Y-m-d'),
+        'reservation_start' => $monthStart->format('Y-m-d'),
+        'reservation_end' => $monthEnd->format('Y-m-d'),
+        'hold_start' => $monthStart->format('Y-m-d'),
+        'hold_end' => $monthEnd->format('Y-m-d'),
     ]);
 
+    $now = new DateTimeImmutable('now', $timezone);
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $slot) {
         $date = (new DateTimeImmutable((string) $slot['slot_date'], $timezone))->format('Y-m-d');
+        $slot['capacity'] = (int) $slot['capacity'];
+        $slot['booked_count'] = (int) $slot['booked_count'];
+        $slot['is_future'] = new DateTimeImmutable(
+            $date . ' ' . $slot['start_time'],
+            $timezone
+        ) > $now;
         $slotsByDate[$date][] = $slot;
     }
 } catch (PDOException $e) {
@@ -71,8 +133,10 @@ $selectedDateLabel = $weekdayNames[(int) $selectedDate->format('N') - 1]
     . ' ' . $selectedDate->format('Y');
 $availableTimeCount = static function (array $daySlots): int {
     return count(array_filter($daySlots, static fn(array $slot): bool =>
+        $slot['is_future']
+        &&
         $slot['is_available'] === 'available'
-        && (int) $slot['booked_count'] < BOOKING_SLOT_CAPACITY
+        && (int) $slot['booked_count'] < (int) $slot['capacity']
     ));
 };
 
@@ -88,7 +152,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="mb-6">
       <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Pemon Barbershop</p>
       <h1 class="mt-1 text-2xl font-extrabold sm:text-3xl">Ketersediaan Reservasi</h1>
-      <p class="mt-2 text-sm text-gray-600">Lihat jam yang masih memiliki kursi tersedia. Jumlah mencakup reservasi aktif semua pelanggan.</p>
+      <p class="mt-2 text-sm text-gray-600">Lihat jam yang masih memiliki kapasitas barber. Jumlah mencakup reservasi aktif dan pembayaran yang sedang diproses.</p>
     </div>
 
     <?php if ($pageError !== ''): ?>
@@ -131,7 +195,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </a>
           <?php endfor; ?>
         </div>
-        <p class="mt-5 text-xs text-gray-500">Jumlah jam tersedia dihitung dari kapasitas kursi pada setiap slot.</p>
+        <p class="mt-5 text-xs text-gray-500">Jadwal tersedia setiap satu jam. Kapasitas mengikuti jumlah barber yang bertugas.</p>
       </div>
 
       <div class="p-5 sm:p-8">
@@ -147,17 +211,18 @@ require_once __DIR__ . '/../../includes/header.php';
           <div class="mt-5 space-y-3">
             <?php foreach ($slots as $slot):
                 $bookedCount = (int) $slot['booked_count'];
-                $remainingCapacity = max(0, BOOKING_SLOT_CAPACITY - $bookedCount);
+                $slotCapacity = (int) $slot['capacity'];
+                $remainingCapacity = max(0, $slotCapacity - $bookedCount);
                 $slotOpen = $slot['is_available'] === 'available';
-                $slotHasSpace = $slotOpen && $remainingCapacity > 0;
-                $slotStatus = !$slotOpen ? 'Ditutup admin' : ($remainingCapacity === 0 ? 'Penuh' : $remainingCapacity . ' dari ' . BOOKING_SLOT_CAPACITY . ' kursi tersedia');
+                $slotHasSpace = $slot['is_future'] && $slotOpen && $remainingCapacity > 0;
+                $slotStatus = !$slot['is_future'] ? 'Waktu lewat' : (!$slotOpen ? 'Ditutup admin' : ($remainingCapacity === 0 ? 'Penuh' : $remainingCapacity . ' dari ' . $slotCapacity . ' barber tersedia'));
             ?>
               <article class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                 <div class="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h3 class="font-bold"><?= $escape(substr((string) $slot['start_time'], 0, 5)) ?>–<?= $escape(substr((string) $slot['end_time'], 0, 5)) ?></h3>
                     <p class="mt-1 text-sm text-gray-600">
-                      <?= $bookedCount ?> / <?= BOOKING_SLOT_CAPACITY ?> kursi terisi
+                      <?= $bookedCount ?> / <?= $slotCapacity ?> kapasitas terpakai
                     </p>
                   </div>
                   <span class="rounded-full px-3 py-1 text-xs font-semibold <?= $slotHasSpace ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-600' ?>">

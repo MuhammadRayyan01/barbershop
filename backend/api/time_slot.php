@@ -26,28 +26,67 @@ if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) {
 require_once __DIR__ . '/../config/booking.php';
 
 try{
+    if ($requestedDate >= new DateTimeImmutable('today', $timezone)) {
+        ensureTimeSlotsForDate($pdo, $date);
+    }
     $stmt = $pdo->prepare("
         SELECT
             ts.slot_id,
             ts.slot_date,
             to_char(ts.start_time, 'HH24:MI') AS start_time,
             to_char(ts.end_time, 'HH24:MI') AS end_time,
-            ts.is_available::text AS is_available,
-            COUNT(r.reservation_id)::integer AS booked_count
+            CASE
+                WHEN BOOL_AND(hour_slots.is_available)
+                     AND MIN(hour_slots.booking_capacity) > 0
+                THEN 'available'
+                ELSE 'not available'
+            END AS is_available,
+            COALESCE(hour_bookings.booked_count, 0)::integer AS booked_count,
+            MIN(hour_slots.booking_capacity)::integer AS hourly_capacity
         FROM time_slot AS ts
-        LEFT JOIN reservation AS r
-            ON r.slot_id = ts.slot_id
-           AND r.reservation_status = 'active'
+        INNER JOIN (
+            SELECT
+                all_slots.slot_date,
+                date_trunc('hour', DATE '2000-01-01' + all_slots.start_time) AS slot_hour,
+                BOOL_AND(all_slots.is_available::text = 'available') AS is_available,
+                MIN(all_slots.booking_capacity) AS booking_capacity
+            FROM time_slot AS all_slots
+            GROUP BY all_slots.slot_date, date_trunc('hour', DATE '2000-01-01' + all_slots.start_time)
+        ) AS hour_slots
+            ON hour_slots.slot_date = ts.slot_date
+           AND hour_slots.slot_hour = date_trunc('hour', DATE '2000-01-01' + ts.start_time)
+        LEFT JOIN LATERAL (
+            SELECT
+                (SELECT COUNT(*)
+                 FROM reservation r
+                 INNER JOIN time_slot booked_slot ON booked_slot.slot_id = r.slot_id
+                 WHERE r.reservation_status = 'active'
+                   AND booked_slot.slot_date = ts.slot_date
+                   AND date_trunc('hour', DATE '2000-01-01' + booked_slot.start_time) = date_trunc('hour', DATE '2000-01-01' + ts.start_time))
+                +
+                (SELECT COUNT(*)
+                 FROM booking_hold bh
+                 INNER JOIN time_slot held_slot ON held_slot.slot_id = bh.slot_id
+                 WHERE bh.hold_status = 'active'
+                   AND bh.expires_at > CURRENT_TIMESTAMP
+                   AND held_slot.slot_date = ts.slot_date
+                   AND date_trunc('hour', DATE '2000-01-01' + held_slot.start_time) = date_trunc('hour', DATE '2000-01-01' + ts.start_time))
+                AS booked_count
+        ) AS hour_bookings ON TRUE
         WHERE ts.slot_date = CAST(:slot_date AS date)
           AND ts.slot_date >= CURRENT_DATE
-        GROUP BY ts.slot_id, ts.slot_date, ts.start_time, ts.end_time, ts.is_available
+          AND EXTRACT(MINUTE FROM ts.start_time) = 0
+          AND ts.end_time = (ts.start_time + INTERVAL '60 minutes')::time
+        GROUP BY ts.slot_id, ts.slot_date, ts.start_time, ts.end_time,
+                 hour_slots.is_available, hour_bookings.booked_count
         ORDER BY ts.start_time
     ");
     $stmt->execute(['slot_date' => $date]);
 
     $slots = array_map(static function (array $slot): array {
         $bookedCount = (int) $slot['booked_count'];
-        $remainingCapacity = max(0, BOOKING_SLOT_CAPACITY - $bookedCount);
+        $capacity = (int) $slot['hourly_capacity'];
+        $remainingCapacity = max(0, $capacity - $bookedCount);
 
         return [
             'slot_id' => (int) $slot['slot_id'],
@@ -56,7 +95,7 @@ try{
             'end_time' => $slot['end_time'],
             'is_available' => $slot['is_available'],
             'booked_count' => $bookedCount,
-            'capacity' => BOOKING_SLOT_CAPACITY,
+            'capacity' => $capacity,
             'remaining_capacity' => $remainingCapacity,
             'is_full' => $remainingCapacity === 0,
         ];

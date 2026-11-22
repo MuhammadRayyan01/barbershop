@@ -248,7 +248,17 @@ function finalizeVerifiedMidtransPayment(
 
         $totalBookings = (int) $capacityStmt->fetchColumn();
 
-        if ($totalBookings >= 3) {
+        $configuredCapacityStmt = $pdo->prepare("SELECT COALESCE(MIN(booking_capacity), 0)
+            FROM time_slot
+            WHERE slot_date = CAST(:slot_date AS date)
+              AND EXTRACT(HOUR FROM start_time) = :slot_hour");
+        $configuredCapacityStmt->execute([
+            ':slot_date' => $slotDate,
+            ':slot_hour' => $hour,
+        ]);
+        $configuredCapacity = (int) $configuredCapacityStmt->fetchColumn();
+
+        if ($totalBookings >= $configuredCapacity) {
             throw new RuntimeException(
                 'Booking capacity has been reached. Manual payment review is required.'
             );

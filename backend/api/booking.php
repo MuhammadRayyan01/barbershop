@@ -154,6 +154,8 @@ if ($method === 'GET') {
                 is_available::text AS is_available
              FROM time_slot
              WHERE slot_date = CAST(:slot_date AS date)
+               AND EXTRACT(MINUTE FROM start_time) = 0
+               AND end_time = (start_time + INTERVAL '60 minutes')::time
              ORDER BY start_time"
         );
 
@@ -438,6 +440,15 @@ if ($action === 'create_hold') {
             bookingApiResponse(404, [
                 'success' => false,
                 'message' => 'Selected time slot does not exist.'
+            ]);
+        }
+
+        if (!isBookableHourlySlot($slot)) {
+            $pdo->rollBack();
+
+            bookingApiResponse(409, [
+                'success' => false,
+                'message' => 'This time slot is no longer available. Please choose an hourly slot.'
             ]);
         }
 

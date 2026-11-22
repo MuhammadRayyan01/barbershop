@@ -202,7 +202,7 @@ require __DIR__ . '/../../includes/header.php';
 
                 <p class="text-[11px] text-gray-500 mt-2">
                     Pilih tanggal untuk melihat ketersediaan.
-                    Jam operasional 10.00–22.00, dengan interval 30 menit.
+                    Jam operasional 10.00–22.00, dengan pilihan waktu mulai setiap 1 jam.
                 </p>
             </div>
 
