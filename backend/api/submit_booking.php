@@ -37,16 +37,17 @@ try {
     $serviceStmt = $pdo->prepare("SELECT service_id FROM service WHERE service_id = :service_id AND status = 'active'");
     $serviceStmt->execute(['service_id' => $serviceId]);
     
-    $slotStmt = $pdo->prepare("SELECT ts.slot_id, ts.is_available::text AS is_available, ts.slot_date, ts.start_time, COUNT(r.reservation_id)::integer AS booked_count 
-                               FROM time_slot ts LEFT JOIN reservation r ON r.slot_id = ts.slot_id AND r.reservation_status = 'active' 
-                               WHERE ts.slot_id = :slot_id AND ts.slot_date = CAST(:slot_date AS date) GROUP BY ts.slot_id");
+    $slotStmt = $pdo->prepare("SELECT ts.slot_id, ts.is_available::text AS is_available, ts.slot_date, ts.start_time, ts.end_time
+                               FROM time_slot ts
+                               WHERE ts.slot_id = :slot_id AND ts.slot_date = CAST(:slot_date AS date)");
     $slotStmt->execute(['slot_id' => $slotId, 'slot_date' => $date]);
     $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
     $slotStart = $slot ? new DateTimeImmutable($date . ' ' . $slot['start_time'], $timezone) : null;
+    $capacity = $slot ? getBookingHourCapacity($pdo, $date, $slot['start_time']) : null;
 
     if (!$serviceStmt->fetchColumn()) {
         echo json_encode(['status' => 'error', 'message' => 'Layanan yang dipilih sudah tidak tersedia.']);
-    } elseif (!$slot || $slot['is_available'] !== 'available' || (int) $slot['booked_count'] >= BOOKING_SLOT_CAPACITY || $slotStart <= new DateTimeImmutable('now', $timezone)) {
+    } elseif (!$slot || !isBookableHourlySlot($slot) || $slot['is_available'] !== 'available' || !$capacity || $capacity['available_count'] <= 0 || $slotStart <= new DateTimeImmutable('now', $timezone)) {
         echo json_encode(['status' => 'error', 'message' => 'Slot yang dipilih tidak tersedia lagi. Pilih waktu lain.']);
     } else {
         // Berhasil! Simpan draft ke session dan beritahu frontend untuk redirect
