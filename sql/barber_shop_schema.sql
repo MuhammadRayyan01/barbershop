@@ -459,6 +459,8 @@ CREATE TABLE public.time_slot (
     start_time time without time zone NOT NULL,
     end_time time without time zone NOT NULL,
     is_available public.slot_status DEFAULT 'available'::public.slot_status NOT NULL,
+    booking_capacity smallint DEFAULT 3 NOT NULL,
+    CONSTRAINT time_slot_booking_capacity_range CHECK ((booking_capacity >= 0) AND (booking_capacity <= 3)),
     CONSTRAINT check_slot_time CHECK ((end_time > start_time))
 );
 
