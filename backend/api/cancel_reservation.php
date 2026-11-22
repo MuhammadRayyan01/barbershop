@@ -752,6 +752,7 @@ try {
             p.payment_status::text AS payment_status,
             p.refund_status,
             p.refund_key,
+            p.refund_method,
             CASE
                 WHEN (clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
                      < i.cancellation_deadline
@@ -796,6 +797,12 @@ try {
             'message' => 'The reservation or payment status has changed.'
         ]);
     }
+
+    $refundMethod = ($current['refund_status'] === 'pending' && $current['refund_method'] === 'manual')
+        ? 'manual'
+        : (midtransPaymentSupportsGatewayRefund($transaction['payment_type'] ?? null)
+            ? 'gateway'
+            : 'manual');
 
     if ($current['refund_status'] === 'completed') {
         $pdo->commit();
@@ -852,6 +859,7 @@ try {
             UPDATE payment
             SET
                 refund_status = 'pending',
+                refund_method = :refund_method,
                 refund_key = :refund_key,
                 refund_reason = :refund_reason,
                 refund_requested_at =
@@ -865,6 +873,7 @@ try {
 
         $stmt->execute([
             ':refund_key' => $refundKey,
+            ':refund_method' => $refundMethod,
             ':refund_reason' => 'Customer cancellation within seven-minute period',
             ':payment_id' => $booking['payment_id']
         ]);
@@ -885,6 +894,11 @@ try {
             'success' => false,
             'message' => 'The current refund status does not allow another refund request.'
         ]);
+    }
+
+    if ($refundMethod === 'manual' && $current['refund_status'] === 'pending') {
+        $stmt = $pdo->prepare("UPDATE payment SET refund_method = 'manual', updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta' WHERE payment_id = :payment_id AND refund_status = 'pending'");
+        $stmt->execute([':payment_id' => $booking['payment_id']]);
     }
 
     // Release the reservation immediately when a settlement refund is prepared.
@@ -915,6 +929,16 @@ try {
     jsonResponse(500, [
         'success' => false,
         'message' => 'Unable to prepare the refund request.'
+    ]);
+}
+
+if ($refundMethod === 'manual') {
+    jsonResponse(200, [
+        'success' => true,
+        'payment_status' => 'paid',
+        'refund_status' => 'pending',
+        'refund_method' => 'manual',
+        'message' => 'Cancellation saved. This payment method must be refunded manually by the barbershop.'
     ]);
 }
 

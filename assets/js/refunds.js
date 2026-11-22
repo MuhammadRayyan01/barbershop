@@ -23,9 +23,9 @@ refundBody.addEventListener('click', async event => {
   }
 
   const confirmed = await confirmDialog({
-    title: 'Catat refund selesai?',
-    message: `Pastikan dana ${rupiah(row.dataset.price)} sudah dikembalikan kepada ${row.dataset.name}.`,
-    okLabel: 'Konfirmasi',
+    title: 'Konfirmasi refund manual?',
+    message: `Pastikan dana ${rupiah(row.dataset.price)} benar-benar sudah dikirim kepada ${row.dataset.name}.`,
+    okLabel: 'Dana sudah dikirim',
   });
   if (!confirmed) return;
   document.getElementById('refund-reservation-id').value = row.dataset.id;

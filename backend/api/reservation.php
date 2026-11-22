@@ -46,6 +46,7 @@ if ($method === 'GET') {
                 i.cancellation_deadline,
                 p.payment_status::text AS payment_status,
                 p.refund_status,
+                p.refund_method,
                 CASE
                     WHEN
                         r.reservation_status = 'active'
