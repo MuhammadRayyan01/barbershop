@@ -334,26 +334,117 @@ if (!empty($existingSnapToken)) {
 */
 
 try {
-    $appBaseUrl = rtrim(midtransEnv('APP_BASE_URL'), '/');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Resolve application base URL
+    |--------------------------------------------------------------------------
+    |
+    | Priority:
+    | 1. APP_BASE_URL from server environment.
+    | 2. Approved local development hosts.
+    | 3. Approved ngrok development host.
+    |
+    | Production must configure APP_BASE_URL explicitly.
+    |
+    */
+
+    $appBaseUrl = trim(midtransEnv('APP_BASE_URL'));
+
+    if ($appBaseUrl !== '') {
+
+        // Explicit configuration takes priority.
+        $appBaseUrl = rtrim($appBaseUrl, '/');
+
+    } else {
+
+        // Only trust explicitly approved development hosts.
+        $requestHost = strtolower(trim(
+            explode(',', $_SERVER['HTTP_HOST'] ?? '')[0]
+        ));
+
+        $allowedDevelopmentHosts = [
+            'localhost:8080' =>
+                'http://localhost:8080',
+
+            '127.0.0.1:8080' =>
+                'http://127.0.0.1:8080',
+
+            'caption-baggie-armoire.ngrok-free.dev' =>
+                'https://caption-baggie-armoire.ngrok-free.dev'
+        ];
+
+        if (!isset($allowedDevelopmentHosts[$requestHost])) {
+            throw new RuntimeException(
+                'APP_BASE_URL is missing and request host is not an approved development host.'
+            );
+        }
+
+        $appBaseUrl = $allowedDevelopmentHosts[$requestHost];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate application base URL
+    |--------------------------------------------------------------------------
+    */
+
     $appBaseUrlParts = parse_url($appBaseUrl);
 
     if (
         !is_array($appBaseUrlParts) ||
-        !in_array(strtolower($appBaseUrlParts['scheme'] ?? ''), ['http', 'https'], true) ||
-        empty($appBaseUrlParts['host'])
+        !in_array(
+            strtolower($appBaseUrlParts['scheme'] ?? ''),
+            ['http', 'https'],
+            true
+        ) ||
+        empty($appBaseUrlParts['host']) ||
+        !empty($appBaseUrlParts['user']) ||
+        !empty($appBaseUrlParts['pass']) ||
+        !empty($appBaseUrlParts['query']) ||
+        !empty($appBaseUrlParts['fragment'])
     ) {
         throw new RuntimeException('APP_BASE_URL is missing or invalid.');
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Require HTTPS for public application URLs
+    |--------------------------------------------------------------------------
+    */
+
+    $isLocalHost = in_array(
+        strtolower($appBaseUrlParts['host']),
+        ['localhost', '127.0.0.1'],
+        true
+    );
+
+    if (
+        !$isLocalHost &&
+        strtolower($appBaseUrlParts['scheme']) !== 'https'
+    ) {
+        throw new RuntimeException(
+            'HTTPS is required for public application URLs.'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create Midtrans payload
+    |--------------------------------------------------------------------------
+    */
 
     $payload = [
         'transaction_details' => [
             'order_id' => $orderId,
             'gross_amount' => $grossAmount
         ],
+
         // Override the example Finish URL configured in the Midtrans dashboard.
         'callbacks' => [
             'finish' => $appBaseUrl . '/user/booking/success.php'
         ],
+
         'customer_details' => [
             'first_name' => $customer['full_name'],
             'email' => $customer['email'],
@@ -417,6 +508,7 @@ try {
     ]);
 
 } catch (Throwable $e) {
+
     error_log('Midtrans transaction creation error: ' . $e->getMessage());
 
     /*
@@ -464,3 +556,4 @@ try {
         'message' => 'Unable to create the payment session. Please try again.'
     ]);
 }
+
