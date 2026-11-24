@@ -4,8 +4,9 @@ require_once __DIR__ . '/../backend/config/csrf.php';
 
 $csrfToken = getCsrfToken();
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$query = trim((string) ($_GET['q'] ?? ''));
 $pageError = '';
-$editData = ['service_id' => '', 'service_name' => '', 'price' => '', 'description' => ''];
+$editData = ['service_id' => '', 'service_name' => '', 'price' => '', 'description' => '', 'duration_minutes' => '30'];
 $reopenEdit = false;
 $flashMessage = $_SESSION['admin_flash'] ?? '';
 unset($_SESSION['admin_flash']);

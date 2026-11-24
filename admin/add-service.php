@@ -5,26 +5,29 @@ require_once __DIR__ . '/../backend/config/csrf.php';
 $csrfToken = getCsrfToken();
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $pageError = '';
-$formData = ['service_name' => '', 'price' => '', 'description' => '', 'status' => 'active'];
+$formData = ['service_name' => '', 'price' => '', 'description' => '', 'duration_minutes' => '30', 'status' => 'active'];
 
 if ($requestMethod === 'POST') {
     $formData = [
         'service_name' => trim((string) ($_POST['service_name'] ?? '')),
         'price' => preg_replace('/\D+/', '', (string) ($_POST['price'] ?? '')),
         'description' => trim((string) ($_POST['description'] ?? '')),
+        'duration_minutes' => trim((string) ($_POST['duration_minutes'] ?? '')),
         'status' => $_POST['status'] ?? 'active',
     ];
     requireValidCsrfToken(is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '');
 
-    if ($formData['service_name'] === '' || strlen($formData['service_name']) > 255 || $formData['price'] === '' || (float) $formData['price'] > 99999999.99 || strlen($formData['description']) > 10000 || !in_array($formData['status'], ['active', 'inactive'], true)) {
-        $pageError = 'Periksa kembali nama, harga, deskripsi, dan status layanan.';
+    $durationMinutes = filter_var($formData['duration_minutes'], FILTER_VALIDATE_INT);
+    if ($formData['service_name'] === '' || strlen($formData['service_name']) > 255 || $formData['price'] === '' || (float) $formData['price'] > 99999999.99 || strlen($formData['description']) > 10000 || $durationMinutes === false || $durationMinutes < 15 || $durationMinutes > 240 || !in_array($formData['status'], ['active', 'inactive'], true)) {
+        $pageError = 'Periksa kembali nama, harga, deskripsi, durasi (15–240 menit), dan status layanan.';
     } else {
         try {
-            $stmt = $pdo->prepare('INSERT INTO service (service_name, description, price, status) VALUES (:name, :description, :price, :status)');
+            $stmt = $pdo->prepare('INSERT INTO service (service_name, description, price, duration_minutes, status) VALUES (:name, :description, :price, :duration_minutes, :status)');
             $stmt->execute([
                 'name' => $formData['service_name'],
                 'description' => $formData['description'] === '' ? null : $formData['description'],
                 'price' => $formData['price'],
+                'duration_minutes' => $durationMinutes,
                 'status' => $formData['status'],
             ]);
             $_SESSION['admin_flash'] = 'Layanan baru berhasil ditambahkan.';
@@ -63,6 +66,15 @@ $adminPageScript = '../assets/js/admin-add-service.js';
           <span class="material-symbols-outlined text-[20px] text-slate-500">payments</span>
           <span class="text-sm text-slate-500">Rp</span>
           <input id="f-price" name="price" type="text" value="<?= $escape($formData['price']) ?>" inputmode="numeric" placeholder="0" class="w-full bg-transparent outline-none text-sm">
+        </div>
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-2"><label for="f-duration" class="text-sm font-semibold">Durasi layanan</label><span class="text-[11px] text-slate-400">15–240 menit</span></div>
+        <div class="flex items-center gap-3 bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-[#0d3b36]/40">
+          <span class="material-symbols-outlined text-[20px] text-slate-500">schedule</span>
+          <input id="f-duration" name="duration_minutes" type="number" min="15" max="240" step="5" required value="<?= $escape($formData['duration_minutes']) ?>" class="w-full bg-transparent outline-none text-sm">
+          <span class="text-sm text-slate-500">menit</span>
         </div>
       </div>
 
