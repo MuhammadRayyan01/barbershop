@@ -41,11 +41,27 @@ try {
                 ts.slot_date,
                 to_char(ts.start_time, 'HH24:MI') AS start_time,
                 to_char(ts.end_time, 'HH24:MI') AS end_time,
+<<<<<<< HEAD
                 ts.is_available::text AS is_available
             FROM time_slot ts
             WHERE ts.slot_date = CAST(:slot_date AS date)";
     $sql .= " AND EXTRACT(MINUTE FROM ts.start_time) = 0
               AND ts.end_time = (ts.start_time + INTERVAL '60 minutes')::time";
+=======
+                ts.is_available::text AS is_available,
+                (
+                    SELECT COUNT(*)::integer
+                    FROM reservation r
+                    INNER JOIN time_slot booked_slot ON booked_slot.slot_id = r.slot_id
+                    WHERE booked_slot.slot_date = ts.slot_date
+                      AND EXTRACT(HOUR FROM booked_slot.start_time) = EXTRACT(HOUR FROM ts.start_time)
+                      AND r.reservation_status::text = 'active'
+                ) AS booked_count
+            FROM time_slot ts
+            WHERE ts.slot_date = CAST(:slot_date AS date)
+              AND EXTRACT(MINUTE FROM ts.start_time) = 0
+              AND ts.end_time = (ts.start_time + INTERVAL '1 hour')::time";
+>>>>>>> ed543f9 (feat: switch booking to hourly time slots)
     $params = ['slot_date' => $requestedDate->format('Y-m-d')];
 
     if ($requestedDate->format('Y-m-d') === $now->format('Y-m-d')) {
@@ -53,7 +69,11 @@ try {
         $params['current_time'] = $now->format('H:i:s');
     }
 
+<<<<<<< HEAD
     $sql .= " ORDER BY ts.start_time";
+=======
+    $sql .= ' ORDER BY ts.start_time';
+>>>>>>> ed543f9 (feat: switch booking to hourly time slots)
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

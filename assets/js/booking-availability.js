@@ -67,6 +67,23 @@
         return `${values.year}-${values.month}-${values.day}`;
     }
 
+    function getInitialBookingDate() {
+        const requestedDate = new URLSearchParams(window.location.search).get('date');
+        if (!requestedDate || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+            return getLocalDate();
+        }
+
+        const [year, month, day] = requestedDate.split('-').map(Number);
+        const parsedDate = new Date(Date.UTC(year, month - 1, day));
+        const isValidDate = parsedDate.getUTCFullYear() === year
+            && parsedDate.getUTCMonth() === month - 1
+            && parsedDate.getUTCDate() === day;
+
+        return isValidDate && requestedDate >= getLocalDate()
+            ? requestedDate
+            : getLocalDate();
+    }
+
     function formatDate(date) {
         return new Intl.DateTimeFormat('id-ID', {
             weekday: 'long',
@@ -148,11 +165,18 @@
 
         continueButton.hidden = Boolean(state.activeHold);
 
-        continueButton.disabled =
-            !ready ||
-            state.loading ||
-            state.creatingHold ||
-            state.releasingHold;
+        const canContinue = Boolean(
+            ready &&
+            !state.loading &&
+            !state.creatingHold &&
+            !state.releasingHold
+        );
+
+        continueButton.disabled = !canContinue;
+        continueButton.classList.toggle('bg-[#0d3b36]', canContinue);
+        continueButton.classList.toggle('hover:bg-[#082724]', canContinue);
+        continueButton.classList.toggle('bg-gray-400', !canContinue);
+        continueButton.classList.toggle('cursor-not-allowed', !canContinue);
 
         continueButton.textContent = state.creatingHold
             ? 'Menyiapkan reservasi...'
@@ -717,7 +741,11 @@
             'col-span-full mt-2 text-[11px] text-gray-500';
 
         information.textContent =
+<<<<<<< HEAD
             'Waktu mulai tersedia setiap 1 jam. Kapasitas tiap jam mengikuti jumlah barber yang bertugas.';
+=======
+            'Setiap slot berdurasi 1 jam dengan kapasitas maksimal 3 pelanggan.';
+>>>>>>> ed543f9 (feat: switch booking to hourly time slots)
 
         timeGroup.append(information);
 
@@ -941,6 +969,7 @@
 
     async function initializeBookingPage() {
         dateInput.min = getLocalDate();
+        const initialDate = getInitialBookingDate();
 
         try {
             const restored = await retrieveActiveHold();
@@ -950,7 +979,7 @@
                 return;
             }
 
-            dateInput.value = getLocalDate();
+            dateInput.value = initialDate;
             state.date = dateInput.value;
 
             updateSummary();
@@ -963,7 +992,7 @@
                 'Gagal memeriksa booking sebelumnya. Silakan muat ulang halaman.'
             );
 
-            dateInput.value = getLocalDate();
+            dateInput.value = initialDate;
             state.date = dateInput.value;
 
             updateSummary();
@@ -1009,6 +1038,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(res => {
             const container = document.getElementById('services-container');
+            if (!container) return;
             container.innerHTML = ''; // Hapus tulisan "Memuat layanan..."
 
             if (res.status === 'success' && res.data.length > 0) {
@@ -1026,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', function() {
                       <span>
                         <span class="block text-sm font-bold leading-tight text-[#0d3b36]">${service.service_name}</span>
                         <span class="mt-2 block text-[11px] text-gray-600">${service.description || 'Layanan barber'}</span>
+                        <span class="mt-2 inline-flex rounded-full bg-[#e8f3ee] px-2.5 py-1 text-[10px] font-semibold text-[#0d3b36]">${Number(service.duration_minutes) || 30} menit</span>
                       </span>
                       <span>
                         <span class="block text-[10px] text-gray-400">Biaya layanan</span>
