@@ -6,7 +6,7 @@ $csrfToken = getCsrfToken();
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $query = trim((string) ($requestMethod === 'POST' ? ($_POST['q'] ?? '') : ($_GET['q'] ?? '')));
 $statusFilter = $requestMethod === 'POST' ? ($_POST['status'] ?? 'all') : ($_GET['status'] ?? 'all');
-if (!in_array($statusFilter, ['all', 'waiting', 'refunded', 'void'], true)) $statusFilter = 'all';
+if (!in_array($statusFilter, ['all', 'waiting', 'manual', 'refunded', 'void'], true)) $statusFilter = 'all';
 $pageError = '';
 $flashMessage = $_SESSION['admin_flash'] ?? '';
 unset($_SESSION['admin_flash']);
@@ -16,10 +16,10 @@ if ($requestMethod === 'POST') {
     $reservationId = filter_var($_POST['reservation_id'] ?? null, FILTER_VALIDATE_INT);
     try {
         if (!$reservationId || $reservationId < 1) throw new InvalidArgumentException('ID reservasi tidak valid.');
-        $stmt = $pdo->prepare("UPDATE payment p SET payment_status = 'refunded', updated_at = CURRENT_TIMESTAMP FROM reservation r WHERE r.reservation_id = p.reservation_id AND p.reservation_id = :id AND p.payment_status = 'paid' AND r.reservation_status = 'inactive' RETURNING p.reservation_id");
+        $stmt = $pdo->prepare("UPDATE payment p SET payment_status = 'refunded', refund_status = 'completed', refunded_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta', updated_at = CURRENT_TIMESTAMP FROM reservation r WHERE r.reservation_id = p.reservation_id AND p.reservation_id = :id AND p.payment_status = 'paid' AND p.refund_status = 'pending' AND p.refund_method = 'manual' AND r.reservation_status = 'inactive' RETURNING p.reservation_id");
         $stmt->execute(['id' => $reservationId]);
-        if (!$stmt->fetchColumn()) throw new InvalidArgumentException('Refund hanya dapat dicatat untuk reservasi yang dibatalkan dan sudah dibayar.');
-        $_SESSION['admin_flash'] = 'Status refund dicatat. Pastikan dana sudah dikembalikan secara terpisah.';
+        if (!$stmt->fetchColumn()) throw new InvalidArgumentException('Hanya refund manual yang menunggu dapat ditandai selesai. Pastikan dana sudah benar-benar dikirim.');
+        $_SESSION['admin_flash'] = 'Refund manual dicatat selesai.';
         header('Location: refunds.php?' . http_build_query(['q' => $query, 'status' => $statusFilter]));
         exit;
     } catch (InvalidArgumentException $e) {
@@ -31,11 +31,11 @@ if ($requestMethod === 'POST') {
 }
 
 try {
-    $stmt = $pdo->query("SELECT r.reservation_id, i.invoice_id, i.customer_name, i.phone_number, s.service_name, i.total_payment, i.created_at, p.payment_status, CASE WHEN p.payment_status = 'refunded' THEN 'refunded' WHEN p.payment_status = 'paid' THEN 'waiting' ELSE 'void' END AS state FROM reservation r JOIN invoice i ON i.reservation_id = r.reservation_id JOIN service s ON s.service_id = r.service_id LEFT JOIN payment p ON p.reservation_id = r.reservation_id WHERE r.reservation_status = 'inactive' ORDER BY i.created_at DESC");
+    $stmt = $pdo->query("SELECT r.reservation_id, i.invoice_id, i.customer_name, i.phone_number, s.service_name, i.total_payment, i.created_at, p.payment_status, p.payment_type, p.refund_method, p.refund_status, CASE WHEN p.payment_status = 'refunded' THEN 'refunded' WHEN p.payment_status = 'paid' AND p.refund_method = 'manual' AND p.refund_status = 'pending' THEN 'manual' WHEN p.payment_status = 'paid' THEN 'waiting' ELSE 'void' END AS state FROM reservation r JOIN invoice i ON i.reservation_id = r.reservation_id JOIN service s ON s.service_id = r.service_id LEFT JOIN payment p ON p.reservation_id = r.reservation_id WHERE r.reservation_status = 'inactive' ORDER BY i.created_at DESC");
     $allRefunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $stats = ['total' => count($allRefunds), 'waiting' => 0, 'refunded_amount' => 0.0];
     foreach ($allRefunds as $row) {
-        if ($row['state'] === 'waiting') $stats['waiting']++;
+        if (in_array($row['state'], ['waiting', 'manual'], true)) $stats['waiting']++;
         if ($row['state'] === 'refunded') $stats['refunded_amount'] += (float) $row['total_payment'];
     }
     $refunds = array_values(array_filter($allRefunds, static function (array $row) use ($query, $statusFilter): bool {
@@ -63,8 +63,8 @@ if (($_GET['export'] ?? '') === 'csv') {
 }
 
 $escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-$stateLabels = ['waiting' => 'Menunggu Refund', 'refunded' => 'Refund Selesai Dicatat', 'void' => 'Belum Ada Pembayaran'];
-$stateClasses = ['waiting' => 'bg-amber-100 text-amber-700', 'refunded' => 'bg-emerald-100 text-emerald-800', 'void' => 'bg-indigo-100 text-indigo-700'];
+$stateLabels = ['waiting' => 'Menunggu Midtrans', 'manual' => 'Menunggu Refund Manual', 'refunded' => 'Refund Selesai', 'void' => 'Belum Ada Pembayaran'];
+$stateClasses = ['waiting' => 'bg-amber-100 text-amber-700', 'manual' => 'bg-orange-100 text-orange-800', 'refunded' => 'bg-emerald-100 text-emerald-800', 'void' => 'bg-indigo-100 text-indigo-700'];
 $adminPageTitle = 'Refunds & Invoices | Pemon Admin';
 $adminPageScript = '../assets/js/refunds.js';
 ?>
@@ -108,6 +108,7 @@ $adminPageScript = '../assets/js/refunds.js';
         <select id="status-filter" name="status" class="bg-[#f8f8fd] rounded-xl px-4 py-2.5 text-sm font-semibold outline-none">
           <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Semua Status</option>
           <option value="waiting" <?= $statusFilter === 'waiting' ? 'selected' : '' ?>>Menunggu Refund</option>
+          <option value="manual" <?= $statusFilter === 'manual' ? 'selected' : '' ?>>Menunggu Refund Manual</option>
           <option value="refunded" <?= $statusFilter === 'refunded' ? 'selected' : '' ?>>Refund Selesai Dicatat</option>
           <option value="void" <?= $statusFilter === 'void' ? 'selected' : '' ?>>Belum Ada Pembayaran</option>
         </select>
@@ -137,7 +138,8 @@ $adminPageScript = '../assets/js/refunds.js';
                 <td class="px-4 py-4 font-bold whitespace-nowrap">Rp <?= number_format((float) $refund['total_payment'], 0, ',', '.') ?></td>
                 <td class="px-4 py-4"><span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold <?= $stateClasses[$refund['state']] ?>"><?= $escape($stateLabels[$refund['state']]) ?></span></td>
                 <td class="px-4 py-4 text-right">
-                  <?php if ($refund['state'] === 'waiting'): ?><button type="button" data-act="refund" class="rounded-lg bg-[#0d3b36] px-4 py-2.5 text-xs font-bold text-white">Catat Refund Selesai</button>
+                  <?php if ($refund['state'] === 'manual'): ?><button type="button" data-act="refund" class="rounded-lg bg-[#0d3b36] px-4 py-2.5 text-xs font-bold text-white">Konfirmasi Dana Dikirim</button>
+                  <?php elseif ($refund['state'] === 'waiting'): ?><span class="text-xs text-amber-700">Menunggu konfirmasi Midtrans</span>
                   <?php else: ?><button type="button" data-act="invoice" class="rounded-lg bg-indigo-50 px-4 py-2 text-xs font-semibold">Lihat Invoice</button><?php endif; ?>
                 </td>
               </tr>

@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             failed: 'Pengembalian dana gagal, silakan hubungi barbershop'
         };
 
+
         return refundStatuses[status] ||
             'Status refund belum tersedia';
     }
@@ -372,6 +373,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 title: 'Pembatalan Berhasil',
                 message: 'Dana berhasil dikembalikan.'
+            };
+        }
+
+        if (result.refund_method === 'manual') {
+            return {
+                title: 'Pembatalan Berhasil',
+                message: 'Reservasi dibatalkan. Pengembalian dana akan dikirim manual oleh barbershop.'
             };
         }
 
@@ -721,7 +729,9 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
                     refundStatus.textContent =
-                        getRefundStatusText(reservation.refund_status);
+                        reservation.refund_method === 'manual'
+                            ? 'Refund manual menunggu pengiriman oleh barbershop'
+                            : getRefundStatusText(reservation.refund_status);
 
                     card.appendChild(refundStatus);
                 }

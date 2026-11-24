@@ -155,7 +155,7 @@ if ($method === 'GET') {
              FROM time_slot
              WHERE slot_date = CAST(:slot_date AS date)
                AND EXTRACT(MINUTE FROM start_time) = 0
-               AND end_time = (start_time + INTERVAL '60 minutes')::time
+               AND end_time = start_time + INTERVAL '1 hour'
              ORDER BY start_time"
         );
 
@@ -443,12 +443,14 @@ if ($action === 'create_hold') {
             ]);
         }
 
-        if (!isBookableHourlySlot($slot)) {
+        $slotStart = new DateTimeImmutable($slot['slot_date'] . ' ' . $slot['start_time']);
+        $slotEnd = new DateTimeImmutable($slot['slot_date'] . ' ' . $slot['end_time']);
+        if ($slotStart->format('i') !== '00' || $slotEnd->getTimestamp() - $slotStart->getTimestamp() !== 3600) {
             $pdo->rollBack();
 
-            bookingApiResponse(409, [
+            bookingApiResponse(422, [
                 'success' => false,
-                'message' => 'This time slot is no longer available. Please choose an hourly slot.'
+                'message' => 'Please select a one-hour time slot.'
             ]);
         }
 

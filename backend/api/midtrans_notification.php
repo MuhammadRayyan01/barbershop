@@ -243,6 +243,7 @@ if ($transactionStatus === 'refund') {
                 p.amount,
                 p.refund_key,
                 p.refund_status,
+                p.refund_method,
                 p.payment_status,
                 r.reservation_status
             FROM payment p
@@ -370,7 +371,8 @@ if ($transactionStatus === 'refund') {
         // Only a paid payment with a pending refund can be completed.
         if (
             $payment['payment_status'] !== 'paid' ||
-            $payment['refund_status'] !== 'pending'
+            $payment['refund_status'] !== 'pending' ||
+            $payment['refund_method'] !== 'gateway'
         ) {
             $pdo->rollBack();
 
@@ -396,6 +398,7 @@ if ($transactionStatus === 'refund') {
             WHERE payment_id = :payment_id
               AND payment_status = 'paid'
               AND refund_status = 'pending'
+              AND refund_method = 'gateway'
         ");
 
         $stmt->execute([

@@ -82,6 +82,7 @@ if (!function_exists('completeConfirmedMidtransRefund')) {
                     p.amount,
                     p.refund_key,
                     p.refund_status,
+                    p.refund_method,
                     p.payment_status::text AS payment_status
                 FROM payment p
                 INNER JOIN reservation r
@@ -112,6 +113,7 @@ if (!function_exists('completeConfirmedMidtransRefund')) {
             if (
                 $payment['payment_status'] !== 'paid' ||
                 $payment['refund_status'] !== 'pending' ||
+                $payment['refund_method'] !== 'gateway' ||
                 !is_string($refundKey) ||
                 $refundKey === ''
             ) {
@@ -186,6 +188,7 @@ if (!function_exists('completeConfirmedMidtransRefund')) {
                 WHERE payment_id = :payment_id
                   AND payment_status = 'paid'
                   AND refund_status = 'pending'
+                  AND refund_method = 'gateway'
             ");
 
             $stmt->execute([':payment_id' => $payment['payment_id']]);
@@ -240,6 +243,7 @@ if (!function_exists('reconcilePendingRefundsForCustomer')) {
                 WHERE r.user_id = :user_id
                   AND p.payment_status = 'paid'
                   AND p.refund_status = 'pending'
+                  AND p.refund_method = 'gateway'
                   AND p.transaction_reference IS NOT NULL
                 ORDER BY p.refund_requested_at ASC
                 LIMIT " . max(1, $limit) . "
@@ -298,6 +302,7 @@ if (!function_exists('submitPendingMidtransRefund')) {
 
         $stmt = $pdo->prepare("
             SELECT p.payment_id, p.amount, p.refund_status, p.refund_key,
+                   p.refund_method,
                    p.payment_status::text AS payment_status,
                    p.transaction_reference
             FROM payment p
@@ -311,7 +316,20 @@ if (!function_exists('submitPendingMidtransRefund')) {
             return 'no_payment';
         }
 
-        if ($payment['refund_status'] !== 'pending') {
+        if (!midtransPaymentSupportsGatewayRefund($transaction['payment_type'] ?? null)) {
+            $stmt = $pdo->prepare("
+                UPDATE payment
+                SET refund_method = 'manual',
+                    updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+                WHERE payment_id = :payment_id
+                  AND payment_status = 'paid'
+                  AND refund_status = 'pending'
+            ");
+            $stmt->execute([':payment_id' => $payment['payment_id']]);
+            return 'manual_required';
+        }
+
+        if ($payment['refund_status'] !== 'pending' || $payment['refund_method'] !== 'gateway') {
             return 'no_pending_refund';
         }
 
@@ -361,6 +379,7 @@ if (!function_exists('submitPendingMidtransRefund')) {
                   AND refund_key = :refund_key
                   AND payment_status = 'paid'
                   AND refund_status = 'pending'
+                  AND refund_method = 'gateway'
             ");
             $stmt->execute([
                 ':payment_id' => $payment['payment_id'],
@@ -426,6 +445,7 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
                 $stmt = $pdo->prepare("
                     UPDATE payment
                     SET refund_status = 'pending',
+                        refund_method = 'gateway',
                         refund_key = :refund_key,
                         refund_reason = :reason,
                         refund_requested_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta',

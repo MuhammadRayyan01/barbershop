@@ -14,7 +14,7 @@ if (!in_array($method, ['GET', 'POST'], true)) {
 if ($method === 'GET') {
     $status = $_GET['status'] ?? 'all';
     $query = trim((string) ($_GET['q'] ?? ''));
-    if (!in_array($status, ['all', 'waiting', 'refunded', 'void'], true)) {
+    if (!in_array($status, ['all', 'waiting', 'manual', 'refunded', 'void'], true)) {
         jsonResponse(422, ['success' => false, 'message' => 'Unsupported refund status.']);
     }
     $where = ["r.reservation_status = 'inactive'"];
@@ -27,7 +27,7 @@ if ($method === 'GET') {
         $params['invoice_id'] = $query;
         $params['reservation_id'] = $query;
     }
-    $stateSql = "CASE WHEN p.payment_status = 'refunded' THEN 'refunded' WHEN p.payment_status = 'paid' THEN 'waiting' ELSE 'void' END";
+    $stateSql = "CASE WHEN p.payment_status = 'refunded' THEN 'refunded' WHEN p.payment_status = 'paid' AND p.refund_method = 'manual' AND p.refund_status = 'pending' THEN 'manual' WHEN p.payment_status = 'paid' THEN 'waiting' ELSE 'void' END";
     if ($status !== 'all') {
         $where[] = "$stateSql = :state";
         $params['state'] = $status;
@@ -35,7 +35,7 @@ if ($method === 'GET') {
     try {
         $stmt = $pdo->prepare("SELECT r.reservation_id, i.invoice_id, i.customer_name, i.phone_number,
                 s.service_name, i.total_payment, i.created_at,
-                p.payment_status, p.payment_type, $stateSql AS state
+                p.payment_status, p.payment_type, p.refund_method, p.refund_status, $stateSql AS state
             FROM reservation r
             JOIN invoice i ON i.reservation_id = r.reservation_id
             JOIN service s ON s.service_id = r.service_id
@@ -45,7 +45,7 @@ if ($method === 'GET') {
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stats = ['total' => count($rows), 'waiting' => 0, 'refunded_amount' => 0.0];
         foreach ($rows as $row) {
-            if ($row['state'] === 'waiting') $stats['waiting']++;
+            if (in_array($row['state'], ['waiting', 'manual'], true)) $stats['waiting']++;
             if ($row['state'] === 'refunded') $stats['refunded_amount'] += (float) $row['total_payment'];
         }
         jsonResponse(200, ['success' => true, 'csrf_token' => getCsrfToken(), 'meta' => $stats, 'data' => $rows]);
@@ -61,18 +61,20 @@ $reservationId = $data['reservation_id'] ?? null;
 if (!is_int($reservationId) || $reservationId < 1) jsonResponse(422, ['success' => false, 'message' => 'A valid reservation ID is required.']);
 
 try {
-    $stmt = $pdo->prepare("UPDATE payment p SET payment_status = 'refunded', updated_at = CURRENT_TIMESTAMP
+    $stmt = $pdo->prepare("UPDATE payment p SET payment_status = 'refunded', refund_status = 'completed', refunded_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta', updated_at = CURRENT_TIMESTAMP
         FROM reservation r
         WHERE p.reservation_id = r.reservation_id
           AND p.reservation_id = :reservation_id
           AND p.payment_status = 'paid'
+          AND p.refund_status = 'pending'
+          AND p.refund_method = 'manual'
           AND r.reservation_status = 'inactive'
         RETURNING p.reservation_id");
     $stmt->execute(['reservation_id' => $reservationId]);
     if (!$stmt->fetchColumn()) {
-        jsonResponse(409, ['success' => false, 'message' => 'Refund status can only be recorded for a cancelled, paid reservation.']);
+        jsonResponse(409, ['success' => false, 'message' => 'Only a cancelled reservation awaiting a manual refund can be completed here.']);
     }
-    jsonResponse(200, ['success' => true, 'message' => 'Refund status recorded. Complete the money transfer separately.']);
+    jsonResponse(200, ['success' => true, 'message' => 'Manual refund recorded as completed.']);
 } catch (PDOException $e) {
     error_log('Admin refund update error: ' . $e->getMessage());
     jsonResponse(500, ['success' => false, 'message' => 'Unable to update refund status.']);

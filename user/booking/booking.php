@@ -11,6 +11,7 @@ $escape = static fn($value): string =>
 $csrfToken = getCsrfToken();
 
 $services = [];
+$additionalServices = [];
 $pageError = '';
 
 // Retrieve active services
@@ -31,6 +32,19 @@ try {
 } catch (PDOException $e) {
     error_log('Booking service list error: ' . $e->getMessage());
     $pageError = 'Daftar layanan gagal dimuat.';
+}
+
+// Retrieved additional services
+try {
+    $stmt = $pdo->query(
+        "SELECT additional_service_id, service_id, additional_service_name, additional_service_price
+         FROM additional_service
+         ORDER BY additional_service_name"
+    );
+    $additionalServices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('Booking additional service list error: ' . $e->getMessage());
+    $pageError = 'Daftar layanan tambahan gagal dimuat.';
 }
 // Default selected service
 $selectedServiceId = (int) ($services[0]['service_id'] ?? 0);
@@ -119,6 +133,13 @@ require __DIR__ . '/../../includes/header.php';
 
             <input
                 type="hidden"
+                name="additional_service_id"
+                id="selected-additional-service-id"
+                value=""
+            >
+
+            <input
+                type="hidden"
                 name="slot_id"
                 id="selected-slot-id"
                 value=""
@@ -183,6 +204,53 @@ require __DIR__ . '/../../includes/header.php';
 
             </div>
 
+            <!-- Additional service selection -->
+            <section class="max-w-4xl mx-auto w-full space-y-3" aria-labelledby="additional-service-title">
+                <div>
+                    <h3 id="additional-service-title" class="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        Layanan Tambahan <span class="font-normal normal-case">(opsional)</span>
+                    </h3>
+                    <p class="mt-1 text-xs text-gray-500">Pilih kartu layanan tambahan yang Anda inginkan.</p>
+                </div>
+                <div id="additional-services-container" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    <button
+                        type="button"
+                        aria-pressed="true"
+                        data-additional-service-id=""
+                        data-service-id=""
+                        class="additional-service-option aspect-square overflow-hidden rounded-2xl bg-white p-4 text-left shadow-sm transition-all duration-200 flex flex-col justify-between border-2 border-[#0d3b36]"
+                    >
+                        <span>
+                            <span class="block text-sm font-bold leading-tight text-[#0d3b36]">Tanpa Tambahan</span>
+                            <span class="mt-2 block text-[11px] text-gray-600">Lanjutkan hanya dengan layanan utama.</span>
+                        </span>
+                        <span>
+                            <span class="block text-[10px] text-gray-400">Biaya tambahan</span>
+                            <span class="text-sm font-bold text-[#0d3b36]">Rp 0</span>
+                        </span>
+                    </button>
+                    <?php foreach ($additionalServices as $additionalService): ?>
+                        <button
+                            type="button"
+                            aria-pressed="false"
+                            data-additional-service-id="<?= (int) $additionalService['additional_service_id'] ?>"
+                            data-service-id="<?= (int) $additionalService['service_id'] ?>"
+                            class="additional-service-option aspect-square overflow-hidden rounded-2xl bg-white p-4 text-left shadow-sm transition-all duration-200 flex flex-col justify-between border border-gray-200 hover:border-[#0d3b36]"
+                        >
+                            <span>
+                                <span class="block text-sm font-bold leading-tight text-[#0d3b36]"><?= $escape($additionalService['additional_service_name']) ?></span>
+                                <span class="mt-2 block text-[11px] text-gray-600">Tambahan untuk layanan utama yang dipilih.</span>
+                            </span>
+                            <span>
+                                <span class="block text-[10px] text-gray-400">Biaya tambahan</span>
+                                <span class="text-sm font-bold text-[#0d3b36]">Rp <?= number_format((float) $additionalService['additional_service_price'], 0, ',', '.') ?></span>
+                            </span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+                <p id="additional-service-empty" class="hidden text-xs text-gray-500">Tidak ada layanan tambahan untuk layanan utama ini.</p>
+            </section>
+
              <!-- Booking date -->
             <div>
                 <label
@@ -202,7 +270,7 @@ require __DIR__ . '/../../includes/header.php';
 
                 <p class="text-[11px] text-gray-500 mt-2">
                     Pilih tanggal untuk melihat ketersediaan.
-                    Jam operasional 10.00–22.00, dengan pilihan waktu mulai setiap 1 jam.
+                    Jam operasional 10.00–22.00, dengan interval 1 jam.
                 </p>
             </div>
 
