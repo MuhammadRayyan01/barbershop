@@ -193,6 +193,32 @@ function getBookingSlot(PDO $pdo, int $slotId): ?array
 }
 
 
+/**
+ * Only full-hour slots are bookable through the current customer flow.
+ * Legacy half-hour rows remain in the database to preserve old reservations.
+ */
+function isBookableHourlySlot(array $slot): bool
+{
+    $startText = substr(trim((string) ($slot['start_time'] ?? '')), 0, 8);
+    $endText = substr(trim((string) ($slot['end_time'] ?? '')), 0, 8);
+    if (strlen($startText) === 5) $startText .= ':00';
+    if (strlen($endText) === 5) $endText .= ':00';
+
+    $start = DateTimeImmutable::createFromFormat('!H:i:s', $startText);
+    $end = DateTimeImmutable::createFromFormat('!H:i:s', $endText);
+
+    if ($start === false || $end === false || $start->format('i:s') !== '00:00') {
+        return false;
+    }
+
+    $expectedEnd = $start
+        ->modify('+' . BOOKING_SLOT_INTERVAL_MINUTES . ' minutes')
+        ->format('H:i:s');
+
+    return $end->format('H:i:s') === $expectedEnd;
+}
+
+
 /*
 |--------------------------------------------------------------------------
 | Calculate shared hourly capacity
@@ -211,6 +237,19 @@ function getBookingHourCapacity(
     string $slotDate,
     string $startTime
 ): array {
+    $capacityStmt = $pdo->prepare(
+        "SELECT COALESCE(MIN(booking_capacity), CAST(:default_capacity AS smallint))
+         FROM time_slot
+         WHERE slot_date = CAST(:slot_date AS date)
+           AND EXTRACT(HOUR FROM start_time) = EXTRACT(HOUR FROM CAST(:start_time AS time))"
+    );
+    $capacityStmt->execute([
+        'default_capacity' => BOOKING_SLOT_CAPACITY,
+        'slot_date' => $slotDate,
+        'start_time' => $startTime,
+    ]);
+    $hourCapacity = (int) $capacityStmt->fetchColumn();
+
     $reservationStmt = $pdo->prepare(
         "SELECT COUNT(*)
          FROM reservation r
@@ -253,14 +292,14 @@ function getBookingHourCapacity(
     $totalUsed = $bookedCount + $heldCount;
 
     return [
-        'capacity' => BOOKING_SLOT_CAPACITY,
+        'capacity' => $hourCapacity,
         'booked_count' => $bookedCount,
         'held_count' => $heldCount,
         'used_count' => $totalUsed,
         'available_count' => max(
             0,
-            BOOKING_SLOT_CAPACITY - $totalUsed
+            $hourCapacity - $totalUsed
         ),
-        'is_full' => $totalUsed >= BOOKING_SLOT_CAPACITY
+        'is_full' => $totalUsed >= $hourCapacity
     ];
 }

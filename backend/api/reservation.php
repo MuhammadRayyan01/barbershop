@@ -195,6 +195,9 @@ try {
     $slotStmt = $pdo->prepare("
         SELECT
             slot_id,
+            slot_date::text AS slot_date,
+            start_time::text AS start_time,
+            end_time::text AS end_time,
             is_available::text AS is_available
         FROM time_slot
         WHERE slot_id = :slot_id
@@ -214,12 +217,28 @@ try {
 
     $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$slot || $slot['is_available'] !== 'available') {
+    if (!$slot || !isBookableHourlySlot($slot) || $slot['is_available'] !== 'available') {
         $pdo->rollBack();
 
         jsonResponse(409, [
             'success' => false,
             'message' => 'This time slot is closed, unavailable, or has already passed.'
+        ]);
+    }
+
+    // Keep the older reservation endpoint consistent with the shared hourly
+    // capacity used by the current booking hold flow.
+    lockBookingHour($pdo, (string) $slot['slot_date'], (string) ($slot['start_time'] ?? ''));
+    $capacity = getBookingHourCapacity(
+        $pdo,
+        (string) $slot['slot_date'],
+        (string) ($slot['start_time'] ?? '')
+    );
+    if ($capacity['available_count'] <= 0) {
+        $pdo->rollBack();
+        jsonResponse(409, [
+            'success' => false,
+            'message' => 'This hour is fully booked. Please select another time.'
         ]);
     }
 
@@ -242,28 +261,6 @@ try {
         jsonResponse(422, [
             'success' => false,
             'message' => 'The selected service is unavailable.'
-        ]);
-    }
-
-    $availabilityStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM reservation
-        WHERE slot_id = :slot_id
-          AND reservation_status = 'active'
-    ");
-
-    $availabilityStmt->execute([
-        'slot_id' => $slotId
-    ]);
-
-    $bookingCount = (int) $availabilityStmt->fetchColumn();
-
-    if ($bookingCount >= BOOKING_SLOT_CAPACITY) {
-        $pdo->rollBack();
-
-        jsonResponse(409, [
-            'success' => false,
-            'message' => 'This time slot is fully booked.'
         ]);
     }
 

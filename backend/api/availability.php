@@ -41,13 +41,11 @@ try {
                 ts.slot_date,
                 to_char(ts.start_time, 'HH24:MI') AS start_time,
                 to_char(ts.end_time, 'HH24:MI') AS end_time,
-                ts.is_available::text AS is_available,
-                COUNT(r.reservation_id)::integer AS booked_count
+                ts.is_available::text AS is_available
             FROM time_slot ts
-            LEFT JOIN reservation r
-                ON r.slot_id = ts.slot_id
-               AND r.reservation_status::text = 'active'
             WHERE ts.slot_date = CAST(:slot_date AS date)";
+    $sql .= " AND EXTRACT(MINUTE FROM ts.start_time) = 0
+              AND ts.end_time = (ts.start_time + INTERVAL '60 minutes')::time";
     $params = ['slot_date' => $requestedDate->format('Y-m-d')];
 
     if ($requestedDate->format('Y-m-d') === $now->format('Y-m-d')) {
@@ -55,16 +53,16 @@ try {
         $params['current_time'] = $now->format('H:i:s');
     }
 
-    $sql .= " GROUP BY ts.slot_id, ts.slot_date, ts.start_time, ts.end_time, ts.is_available
-              ORDER BY ts.start_time";
+    $sql .= " ORDER BY ts.start_time";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
 
     $slots = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $slot) {
-        $booked = (int)$slot['booked_count'];
-        $remaining = max(0, BOOKING_SLOT_CAPACITY - $booked);
+        $capacity = getBookingHourCapacity($pdo, $slot['slot_date'], $slot['start_time']);
+        $booked = $capacity['used_count'];
+        $remaining = $capacity['available_count'];
         $adminAvailable = strtolower((string)$slot['is_available']) === 'available';
 
         $slots[] = [
@@ -74,9 +72,9 @@ try {
             'end_time' => $slot['end_time'],
             'is_available' => $slot['is_available'],
             'booked_count' => $booked,
-            'capacity' => BOOKING_SLOT_CAPACITY,
+            'capacity' => $capacity['capacity'],
             'remaining_capacity' => $remaining,
-            'is_full' => !$adminAvailable || $remaining === 0,
+            'is_full' => !$adminAvailable || $capacity['capacity'] === 0 || $remaining === 0,
         ];
     }
 
