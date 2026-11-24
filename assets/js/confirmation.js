@@ -105,6 +105,12 @@
             document.getElementById('confirm-service-name').textContent =
                 data.service_name;
 
+            const additionalService = data.additional_service_name
+                ? `${data.additional_service_name} (${formatCurrency(data.additional_service_price || 0)})`
+                : 'Tidak ada';
+            document.getElementById('confirm-additional-service').textContent =
+                additionalService;
+
             document.getElementById('confirm-customer-name').textContent =
                 data.customer_name;
 

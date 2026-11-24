@@ -57,6 +57,7 @@ try {
             bh.expires_at,
 
             s.service_name,
+            ads.additional_service_name,
 
             ts.slot_date,
             ts.start_time,
@@ -69,6 +70,9 @@ try {
 
         INNER JOIN service s
             ON s.service_id = bh.service_id
+
+        LEFT JOIN additional_service ads
+            ON ads.additional_service_id = bh.additional_service_id
 
         INNER JOIN time_slot ts
             ON ts.slot_id = bh.slot_id
@@ -114,6 +118,8 @@ try {
             'additional_service_id' => $hold['additional_service_id'] !== null
                 ? (int) $hold['additional_service_id']
                 : null,
+
+            'additional_service_name' => $hold['additional_service_name'],
 
             'additional_service_price' => $hold['additional_service_price'] !== null
                 ? (float) $hold['additional_service_price']

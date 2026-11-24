@@ -45,6 +45,11 @@ require __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <div>
+                    <dt class="text-xs text-gray-500">Layanan tambahan</dt>
+                    <dd id="confirm-additional-service" class="mt-1 font-semibold"></dd>
+                </div>
+
+                <div>
                     <dt class="text-xs text-gray-500">Pelanggan</dt>
                     <dd id="confirm-customer-name" class="mt-1 font-semibold"></dd>
                 </div>
