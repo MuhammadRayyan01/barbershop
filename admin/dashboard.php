@@ -65,8 +65,22 @@ try {
     $where = ['ts.slot_date = CAST(:date AS date)'];
     $params = ['date' => $date];
     if ($query !== '') {
-        $where[] = '(u.full_name ILIKE :name_query OR u.phone_number ILIKE :phone_query OR s.service_name ILIKE :service_query OR CAST(r.reservation_id AS text) = :id_query)';
-        $params += ['name_query' => '%' . $query . '%', 'phone_query' => '%' . $query . '%', 'service_query' => '%' . $query . '%', 'id_query' => $query];
+        $where[] = "(
+            to_tsvector('simple', COALESCE(u.full_name, '')) @@ websearch_to_tsquery('simple', :name_search)
+            OR u.full_name ILIKE :name_partial
+            OR to_tsvector('simple', COALESCE(s.service_name, '') || ' ' || COALESCE(s.description, '')) @@ websearch_to_tsquery('simple', :service_search)
+            OR s.service_name ILIKE :service_partial
+            OR u.phone_number ILIKE :phone_query
+            OR CAST(r.reservation_id AS text) = :id_query
+        )";
+        $params += [
+            'name_search' => $query,
+            'name_partial' => '%' . $query . '%',
+            'service_search' => $query,
+            'service_partial' => '%' . $query . '%',
+            'phone_query' => '%' . $query . '%',
+            'id_query' => $query,
+        ];
     }
     $stmt = $pdo->prepare("SELECT r.reservation_id, r.reservation_status, u.full_name, u.phone_number, s.service_name, r.service_price, ts.slot_date, ts.start_time, i.total_payment, p.payment_status, p.payment_type FROM reservation r JOIN users u ON u.user_id = r.user_id JOIN service s ON s.service_id = r.service_id JOIN time_slot ts ON ts.slot_id = r.slot_id LEFT JOIN invoice i ON i.reservation_id = r.reservation_id LEFT JOIN payment p ON p.reservation_id = r.reservation_id WHERE " . implode(' AND ', $where) . ' ORDER BY ts.start_time, r.reservation_id');
     $stmt->execute($params);
@@ -145,7 +159,7 @@ $adminPageScript = '../assets/js/admin-dashboard.js';
       <form method="get" action="dashboard.php" class="flex flex-wrap items-center gap-3 p-4">
         <div class="flex items-center gap-2 bg-[#f8f8fd] rounded-xl px-4 py-2.5 flex-1 min-w-[200px] max-w-sm">
           <span class="material-symbols-outlined text-[18px] text-slate-500">search</span>
-          <input id="search" name="q" type="text" value="<?= $escape($query) ?>" placeholder="Cari nama / telepon..." class="w-full bg-transparent outline-none text-sm">
+          <input id="search" name="q" type="search" value="<?= $escape($query) ?>" placeholder="Cari nama, layanan, telepon, atau ID..." class="w-full bg-transparent outline-none text-sm">
         </div>
         <label class="flex items-center gap-2 bg-[#f8f8fd] rounded-xl px-4 py-2.5 text-sm">
           <span class="material-symbols-outlined text-[18px] text-slate-500">calendar_month</span>

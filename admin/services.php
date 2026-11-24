@@ -63,7 +63,24 @@ if ($requestMethod === 'POST') {
 }
 
 try {
-    $stmt = $pdo->query("SELECT service_id, service_name, description, price FROM service WHERE status = 'active' ORDER BY service_name");
+    if ($query === '') {
+        $stmt = $pdo->query("SELECT service_id, service_name, description, price, duration_minutes FROM service WHERE status = 'active' ORDER BY service_name");
+    } else {
+        $stmt = $pdo->prepare("SELECT service_id, service_name, description, price, duration_minutes
+            FROM service
+            WHERE status = 'active'
+              AND (
+                to_tsvector('simple', COALESCE(service_name, '') || ' ' || COALESCE(description, '')) @@ websearch_to_tsquery('simple', :search_query)
+                OR service_name ILIKE :partial_name
+                OR COALESCE(description, '') ILIKE :partial_description
+              )
+            ORDER BY service_name");
+        $stmt->execute([
+            'search_query' => $query,
+            'partial_name' => '%' . $query . '%',
+            'partial_description' => '%' . $query . '%',
+        ]);
+    }
     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log('Admin service list page error: ' . $e->getMessage());
@@ -89,12 +106,13 @@ $adminPageScript = '../assets/js/admin-services.js';
     </div>
 
     <div class="flex flex-wrap items-center gap-3 mt-6">
-      <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 flex-1 min-w-[260px] shadow-sm">
+      <form id="service-search-form" method="get" action="services.php" class="flex flex-1 min-w-[260px] items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
         <span class="material-symbols-outlined text-[20px] text-slate-500">search</span>
-        <input id="search" type="text" placeholder="Search by name (Cari nama layanan pangkas rambut, cuci, styling...)" class="w-full bg-transparent outline-none text-sm">
-        <button id="clear-search" class="hidden text-slate-400 hover:text-slate-700" aria-label="Hapus"><span class="material-symbols-outlined text-[18px]">close</span></button>
-      </div>
-      <span id="total-chip" class="px-3 py-2 rounded-lg bg-indigo-50 text-xs font-semibold text-slate-700">Total: <?= count($services) ?> Layanan Aktif</span>
+        <input id="search" name="q" type="search" value="<?= $escape($query) ?>" placeholder="Cari nama atau deskripsi layanan..." class="w-full bg-transparent outline-none text-sm">
+        <?php if ($query !== ''): ?><a id="clear-search" href="services.php" class="text-slate-400 hover:text-slate-700" aria-label="Hapus pencarian"><span class="material-symbols-outlined text-[18px]">close</span></a><?php endif; ?>
+        <button type="submit" class="rounded-lg bg-[#0d3b36] px-3 py-2 text-xs font-semibold text-white">Cari</button>
+      </form>
+      <span id="total-chip" class="px-3 py-2 rounded-lg bg-indigo-50 text-xs font-semibold text-slate-700">Menampilkan <?= count($services) ?> layanan</span>
       <span class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-100 text-xs font-semibold text-emerald-900">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>Data dari database
       </span>

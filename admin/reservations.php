@@ -58,11 +58,20 @@ try {
         $params['date'] = $date;
     }
     if ($query !== '') {
-        $where[] = '(u.full_name ILIKE :name_query OR u.phone_number ILIKE :phone_query OR s.service_name ILIKE :service_query OR CAST(r.reservation_id AS text) = :id_query)';
+        $where[] = "(
+            to_tsvector('simple', COALESCE(u.full_name, '')) @@ websearch_to_tsquery('simple', :name_search)
+            OR u.full_name ILIKE :name_partial
+            OR to_tsvector('simple', COALESCE(s.service_name, '') || ' ' || COALESCE(s.description, '')) @@ websearch_to_tsquery('simple', :service_search)
+            OR s.service_name ILIKE :service_partial
+            OR u.phone_number ILIKE :phone_query
+            OR CAST(r.reservation_id AS text) = :id_query
+        )";
         $params += [
-            'name_query' => '%' . $query . '%',
+            'name_search' => $query,
+            'name_partial' => '%' . $query . '%',
+            'service_search' => $query,
+            'service_partial' => '%' . $query . '%',
             'phone_query' => '%' . $query . '%',
-            'service_query' => '%' . $query . '%',
             'id_query' => $query,
         ];
     }

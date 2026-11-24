@@ -31,21 +31,62 @@ if ($requestMethod === 'POST') {
 }
 
 try {
-    $stmt = $pdo->query("SELECT r.reservation_id, i.invoice_id, i.customer_name, i.phone_number, s.service_name, i.total_payment, i.created_at, p.payment_status, CASE WHEN p.payment_status = 'refunded' THEN 'refunded' WHEN p.payment_status = 'paid' THEN 'waiting' ELSE 'void' END AS state FROM reservation r JOIN invoice i ON i.reservation_id = r.reservation_id JOIN service s ON s.service_id = r.service_id LEFT JOIN payment p ON p.reservation_id = r.reservation_id WHERE r.reservation_status = 'inactive' ORDER BY i.created_at DESC");
-    $allRefunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $stats = ['total' => count($allRefunds), 'waiting' => 0, 'refunded_amount' => 0.0];
-    foreach ($allRefunds as $row) {
-        if ($row['state'] === 'waiting') $stats['waiting']++;
-        if ($row['state'] === 'refunded') $stats['refunded_amount'] += (float) $row['total_payment'];
+    $statsRow = $pdo->query("SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE p.payment_status = 'paid') AS waiting,
+        COALESCE(SUM(i.total_payment) FILTER (WHERE p.payment_status = 'refunded'), 0) AS refunded_amount
+        FROM reservation r
+        JOIN invoice i ON i.reservation_id = r.reservation_id
+        LEFT JOIN payment p ON p.reservation_id = r.reservation_id
+        WHERE r.reservation_status = 'inactive'")->fetch(PDO::FETCH_ASSOC);
+    $stats = [
+        'total' => (int) $statsRow['total'],
+        'waiting' => (int) $statsRow['waiting'],
+        'refunded_amount' => (float) $statsRow['refunded_amount'],
+    ];
+    $allTotal = $stats['total'];
+
+    $where = ["r.reservation_status = 'inactive'"];
+    $params = [];
+    if ($statusFilter === 'waiting') {
+        $where[] = "p.payment_status = 'paid'";
+    } elseif ($statusFilter === 'refunded') {
+        $where[] = "p.payment_status = 'refunded'";
+    } elseif ($statusFilter === 'void') {
+        $where[] = "(p.payment_status IS NULL OR p.payment_status NOT IN ('paid', 'refunded'))";
     }
-    $refunds = array_values(array_filter($allRefunds, static function (array $row) use ($query, $statusFilter): bool {
-        $matchesStatus = $statusFilter === 'all' || $row['state'] === $statusFilter;
-        $searchText = strtolower(implode(' ', [$row['customer_name'], $row['phone_number'], $row['service_name'], (string) $row['invoice_id'], (string) $row['reservation_id']]));
-        return $matchesStatus && ($query === '' || str_contains($searchText, strtolower($query)));
-    }));
+    if ($query !== '') {
+        $where[] = "(
+            to_tsvector('simple', COALESCE(i.customer_name, '')) @@ websearch_to_tsquery('simple', :customer_search)
+            OR to_tsvector('simple', COALESCE(s.service_name, '') || ' ' || COALESCE(s.description, '')) @@ websearch_to_tsquery('simple', :service_search)
+            OR i.phone_number ILIKE :phone_query
+            OR CAST(i.invoice_id AS text) = :invoice_id
+            OR CAST(r.reservation_id AS text) = :reservation_id
+        )";
+        $params += [
+            'customer_search' => $query,
+            'service_search' => $query,
+            'phone_query' => '%' . $query . '%',
+            'invoice_id' => $query,
+            'reservation_id' => $query,
+        ];
+    }
+    $stmt = $pdo->prepare("SELECT r.reservation_id, i.invoice_id, i.customer_name, i.phone_number,
+            s.service_name, i.total_payment, i.created_at, p.payment_status,
+            CASE WHEN p.payment_status = 'refunded' THEN 'refunded'
+                 WHEN p.payment_status = 'paid' THEN 'waiting'
+                 ELSE 'void' END AS state
+        FROM reservation r
+        JOIN invoice i ON i.reservation_id = r.reservation_id
+        JOIN service s ON s.service_id = r.service_id
+        LEFT JOIN payment p ON p.reservation_id = r.reservation_id
+        WHERE " . implode(' AND ', $where) . ' ORDER BY i.created_at DESC');
+    $stmt->execute($params);
+    $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log('Admin refund list error: ' . $e->getMessage());
-    $allRefunds = $refunds = [];
+    $refunds = [];
+    $allTotal = 0;
     $stats = ['total' => 0, 'waiting' => 0, 'refunded_amount' => 0.0];
     $pageError = 'Riwayat refund gagal dimuat.';
 }
@@ -146,7 +187,7 @@ $adminPageScript = '../assets/js/refunds.js';
         </table>
       </div>
 
-      <p class="px-4 py-4 text-xs text-slate-500 no-print">Menampilkan <?= count($refunds) ?> dari <?= count($allRefunds) ?> riwayat pembatalan.</p>
+      <p class="px-4 py-4 text-xs text-slate-500 no-print">Menampilkan <?= count($refunds) ?> dari <?= (int) $allTotal ?> riwayat pembatalan.</p>
     </section>
   </main>
 
