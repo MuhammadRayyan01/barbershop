@@ -24,15 +24,11 @@ require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <main class="max-w-3xl w-full mx-auto my-8 space-y-4">
-<<<<<<< HEAD
     <input
     type="hidden"
     id="dashboard-csrf-token"
     value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>"
 >
-=======
-    <input type="hidden" id="dashboard-csrf-token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
 
     <section class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 space-y-6" aria-labelledby="dashboard-title">
         <div>
@@ -67,15 +63,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 <a href="reservations.php" class="text-xs font-semibold text-[#0d3b36] hover:underline">Lihat semua</a>
             </div>
 
-<<<<<<< HEAD
            <div id="reservasi-container" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                 <p class="text-sm text-gray-500">
                     Memuat data reservasi...
                 </p>
-=======
-            <div id="reservasi-container" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-                <p class="text-sm text-gray-500">Memuat data reservasi...</p>
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
             </div>
         </section>
 
