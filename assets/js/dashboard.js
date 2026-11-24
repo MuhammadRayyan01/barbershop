@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'jumlah-reservasi'
     );
 
-<<<<<<< HEAD
     const pendingPaymentCount = document.getElementById(
         'jumlah-pembayaran'
     );
@@ -20,9 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const countdownIntervals = new Set();
 
-=======
-    // Show the customer's name in the welcome message (profile is loaded by app.js).
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
     if (window.PemonAccount) {
 
         window.PemonAccount.onChange((profile) => {
@@ -60,15 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return new Intl.DateTimeFormat('id-ID', {
             dateStyle: 'long',
-<<<<<<< HEAD
-            timeStyle: 'short'
-=======
 
             timeStyle: 'short',
 
             timeZone: 'Asia/Jakarta'
 
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
         }).format(dateObject);
     }
 
@@ -555,7 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     upcomingReservations.length;
             }
 
-<<<<<<< HEAD
             if (pendingPaymentCount) {
 
                 pendingPaymentCount.textContent =
@@ -564,8 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             clearCountdowns();
 
-=======
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
             reservationContainer.replaceChildren();
 
             if (upcomingReservations.length === 0) {
@@ -610,7 +599,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('article');
 
                 card.className =
-<<<<<<< HEAD
                     'rounded-xl border border-gray-100 p-4 sm:p-5';
 
                 const layout = document.createElement('div');
@@ -621,11 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const details = document.createElement('div');
 
                 details.className = 'min-w-0 flex-1 space-y-1';
-=======
-                    'flex flex-col gap-4 rounded-2xl border border-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5';
-
-                const details = document.createElement('div');
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
 
                 const service = document.createElement('p');
 
@@ -657,13 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         Number(reservation.service_price || 0) +
                         Number(reservation.additional_service_price || 0)
                     );
-<<<<<<< HEAD
 
-                const payment = document.createElement('p');
-=======
-                date.className = 'mt-1 text-sm text-gray-600';
-                details.append(service, date, additional);
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
 
                 const actions = document.createElement('div');
                 actions.className = 'flex items-center justify-between gap-4 sm:justify-end';
@@ -672,7 +649,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 amount.className = 'text-sm font-bold text-[#0d3b36]';
                 amount.textContent = formatRupiah(total);
 
-<<<<<<< HEAD
                     const paymentStatuses = {
                     pending: 'Menunggu pembayaran',
                     paid: 'Pembayaran berhasil',
@@ -696,7 +672,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     service,
                     date,
                     additional,
-                    payment,
                     status
                 );
 
@@ -750,6 +725,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 layout.append(details, timerPanel);
 
                 card.appendChild(layout);
+
+                const detailLink = document.createElement('a');
+                detailLink.href = `../booking/success.php?reservation_id=${encodeURIComponent(reservation.reservation_id)}`;
+                detailLink.className = 'rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50';
+                detailLink.textContent = 'Detail';
+                actions.append(amount, detailLink);
+                card.appendChild(actions);
 
                 if (
                     reservation.refund_status &&
@@ -836,20 +818,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     card.appendChild(expiredMessage);
                 }
 
-=======
-                const detailLink = document.createElement('a');
-                detailLink.href = `../booking/success.php?reservation_id=${encodeURIComponent(reservation.reservation_id)}`;
-                detailLink.className = 'rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50';
-                detailLink.textContent = 'Detail';
-
-                actions.append(amount, detailLink);
-                card.append(details, actions);
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
                 reservationContainer.appendChild(card);
             });
 
-<<<<<<< HEAD
-=======
             if (upcomingReservations.length > 3) {
                 const allLink = document.createElement('a');
                 allLink.href = 'reservations.php';
@@ -859,7 +830,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
 
->>>>>>> 4614d32 (feat: add customer reservation history and reminders)
         } catch (error) {
 
             console.error('Reservation loading error:', error);

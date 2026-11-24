@@ -160,13 +160,10 @@ require __DIR__ . '/../../includes/header.php';
                                 <span class="mt-2 block text-[11px] text-gray-600">
                                     <?= $escape($service['description'] ?: 'Layanan barber') ?>
                                 </span>
-<<<<<<< HEAD
-=======
                                 <span class="mt-2 inline-flex rounded-full bg-[#e8f3ee] px-2.5 py-1 text-[10px] font-semibold text-[#0d3b36]">
                                     <?= (int) $service['duration_minutes'] ?> menit
                                 </span>
 
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
                             </span>
 
                             <span>
@@ -210,11 +207,7 @@ require __DIR__ . '/../../includes/header.php';
 
                 <p class="text-[11px] text-gray-500 mt-2">
                     Pilih tanggal untuk melihat ketersediaan.
-<<<<<<< HEAD
                     Jam operasional 10.00–22.00, dengan pilihan waktu mulai setiap 1 jam.
-=======
-                    Jam operasional 10.00–22.00, dengan interval 1 jam.
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
                 </p>
             </div>
 
@@ -272,11 +265,7 @@ require __DIR__ . '/../../includes/header.php';
                         id="continue-booking"
                         type="submit"
                         disabled
-<<<<<<< HEAD
                         class="px-5 py-2 bg-[#0d3b36] disabled:bg-gray-400 hover:bg-[#082724] disabled:hover:bg-gray-400 text-white rounded-xl text-xs font-bold text-center transition-colors duration-200 disabled:cursor-not-allowed"
-=======
-                        class="px-5 py-2 bg-gray-400 text-white rounded-xl text-xs font-bold text-center transition-colors disabled:cursor-not-allowed"
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
                     >
                         Lanjut ke Pembayaran &rarr;
                     </button>

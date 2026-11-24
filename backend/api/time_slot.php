@@ -35,7 +35,6 @@ try{
             ts.slot_date,
             to_char(ts.start_time, 'HH24:MI') AS start_time,
             to_char(ts.end_time, 'HH24:MI') AS end_time,
-<<<<<<< HEAD
             CASE
                 WHEN BOOL_AND(hour_slots.is_available)
                      AND MIN(hour_slots.booking_capacity) > 0
@@ -80,22 +79,6 @@ try{
           AND ts.end_time = (ts.start_time + INTERVAL '60 minutes')::time
         GROUP BY ts.slot_id, ts.slot_date, ts.start_time, ts.end_time,
                  hour_slots.is_available, hour_bookings.booked_count
-=======
-            ts.is_available::text AS is_available,
-            (
-                SELECT COUNT(*)::integer
-                FROM reservation booked_reservation
-                INNER JOIN time_slot booked_slot ON booked_slot.slot_id = booked_reservation.slot_id
-                WHERE booked_slot.slot_date = ts.slot_date
-                  AND EXTRACT(HOUR FROM booked_slot.start_time) = EXTRACT(HOUR FROM ts.start_time)
-                  AND booked_reservation.reservation_status = 'active'
-            ) AS booked_count
-        FROM time_slot AS ts
-        WHERE ts.slot_date = CAST(:slot_date AS date)
-          AND ts.slot_date >= CURRENT_DATE
-          AND EXTRACT(MINUTE FROM ts.start_time) = 0
-          AND ts.end_time = (ts.start_time + INTERVAL '1 hour')::time
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
         ORDER BY ts.start_time
     ");
     $stmt->execute(['slot_date' => $date]);

@@ -81,7 +81,6 @@ try {
         ensureTimeSlotsForDate($pdo, $date);
     }
 
-<<<<<<< HEAD
     $stmt = $pdo->prepare("WITH slot_hours AS (
         SELECT
             ts.slot_date,
@@ -127,10 +126,6 @@ try {
         'date_reservations' => $date,
         'date_holds' => $date,
     ]);
-=======
-    $stmt = $pdo->prepare("SELECT ts.slot_id, ts.slot_date, ts.start_time, ts.end_time, ts.is_available, (SELECT COUNT(*) FROM reservation r JOIN time_slot booked_slot ON booked_slot.slot_id = r.slot_id WHERE booked_slot.slot_date = ts.slot_date AND EXTRACT(HOUR FROM booked_slot.start_time) = EXTRACT(HOUR FROM ts.start_time) AND r.reservation_status = 'active') AS booked_count FROM time_slot ts WHERE ts.slot_date = CAST(:date AS date) AND EXTRACT(MINUTE FROM ts.start_time) = 0 AND ts.end_time = (ts.start_time + INTERVAL '1 hour')::time ORDER BY ts.start_time");
-    $stmt->execute(['date' => $date]);
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
     $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log('Admin slot list error: ' . $e->getMessage());
@@ -148,11 +143,7 @@ $adminPageScript = '../assets/js/admin-slots.js';
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl sm:text-3xl font-extrabold">Date Time Slot</h1>
-<<<<<<< HEAD
-        <p class="text-sm text-slate-500 mt-1">Sesuaikan kapasitas per jam dengan jumlah barber yang bertugas.</p>
-=======
-        <p class="text-sm text-slate-500 mt-1">Slot 1 jam dari pukul 10.00 hingga 22.00 dibuat otomatis untuk tanggal yang dipilih.</p>
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
+        <p class="text-sm text-slate-500 mt-1">Atur kapasitas barber untuk slot 1 jam yang dibuat otomatis dari pukul 10.00 hingga 22.00.</p>
       </div>
       <form method="get" action="time-slots.php" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm text-sm font-semibold">
         <span class="material-symbols-outlined text-slate-500">calendar_month</span><label for="slot-date">Tanggal</label>

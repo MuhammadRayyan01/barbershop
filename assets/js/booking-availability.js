@@ -741,11 +741,7 @@
             'col-span-full mt-2 text-[11px] text-gray-500';
 
         information.textContent =
-<<<<<<< HEAD
-            'Waktu mulai tersedia setiap 1 jam. Kapasitas tiap jam mengikuti jumlah barber yang bertugas.';
-=======
-            'Setiap slot berdurasi 1 jam dengan kapasitas maksimal 3 pelanggan.';
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
+            'Setiap slot berdurasi 1 jam. Kapasitas tiap jam mengikuti jumlah barber yang bertugas.';
 
         timeGroup.append(information);
 

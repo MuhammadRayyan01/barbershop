@@ -6,12 +6,8 @@ declare(strict_types=1);
 | Booking configuration
 |--------------------------------------------------------------------------
 |
-<<<<<<< HEAD
 | Each booking is a one-hour time block. Admins can lower the capacity
 | for each clock hour to match the number of barbers on duty.
-=======
-| Each clock hour is one booking slot with a maximum capacity of 3 bookings.
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
 |
 */
 
@@ -57,19 +53,11 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
         SELECT
             CAST(:slot_date AS date),
             times.start_time::time,
-<<<<<<< HEAD
             (times.start_time + INTERVAL '60 minutes')::time
         FROM generate_series(
             TIMESTAMP '2000-01-01 10:00:00',
             TIMESTAMP '2000-01-01 21:00:00',
             INTERVAL '60 minutes'
-=======
-            (times.start_time + make_interval(mins => :slot_duration_minutes))::time
-        FROM generate_series(
-            TIMESTAMP '2000-01-01 10:00:00',
-            TIMESTAMP '2000-01-01 21:00:00',
-            make_interval(mins => :slot_interval_minutes)
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
         ) AS times(start_time)
         ON CONFLICT (slot_date, start_time, end_time)
         DO NOTHING"
@@ -114,11 +102,7 @@ function expireBookingHolds(PDO $pdo): int
 | Lock a date and clock hour
 |--------------------------------------------------------------------------
 |
-<<<<<<< HEAD
 | Each hour uses one lock, so simultaneous requests cannot exceed its capacity.
-=======
-| The slot represents one complete clock hour.
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
 | This prevents simultaneous requests from exceeding hourly capacity.
 |
 | IMPORTANT:
@@ -248,12 +232,8 @@ function isBookableHourlySlot(array $slot): bool
 | 1. Active permanent reservations.
 | 2. Active temporary holds that have not expired.
 |
-<<<<<<< HEAD
 | All reservations and active holds that start within that clock hour share
 | the hour's capacity, including any legacy half-hour slots already booked.
-=======
-| Counts reservations and active holds for the selected clock hour.
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
 |
 */
 

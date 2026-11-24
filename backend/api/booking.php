@@ -155,11 +155,7 @@ if ($method === 'GET') {
              FROM time_slot
              WHERE slot_date = CAST(:slot_date AS date)
                AND EXTRACT(MINUTE FROM start_time) = 0
-<<<<<<< HEAD
                AND end_time = (start_time + INTERVAL '60 minutes')::time
-=======
-               AND end_time = (start_time + INTERVAL '1 hour')::time
->>>>>>> ed543f9 (feat: switch booking to hourly time slots)
              ORDER BY start_time"
         );
 
