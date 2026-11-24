@@ -15,6 +15,12 @@
     const selectedServiceInput =
         document.getElementById('selected-service-id');
 
+    const selectedAdditionalServiceInput =
+        document.getElementById('selected-additional-service-id');
+
+    const additionalServiceButtons =
+        document.querySelectorAll('.additional-service-option');
+
     const selectedSlotInput =
         document.getElementById('selected-slot-id');
 
@@ -128,10 +134,17 @@
 
     function updateSummary() {
         if (summaryText) {
-            summaryText.textContent =
+            const dateSummary =
                 state.date && state.time
                     ? `${formatDate(state.date)} pukul ${state.time} WIB.`
                     : 'Pilih tanggal dan waktu reservasi.';
+            const selectedAddon = document.querySelector(
+                '.additional-service-option[aria-pressed="true"]'
+            );
+            const addonSummary = selectedAddon?.dataset.additionalServiceId
+                ? ` Layanan tambahan: ${selectedAddon.querySelector('.text-sm.font-bold')?.textContent.trim() || 'Dipilih'}.`
+                : '';
+            summaryText.textContent = dateSummary + addonSummary;
         }
 
         updateContinueButton();
@@ -161,6 +174,7 @@
 
     function setBookingControlsDisabled(disabled) {
         dateInput.disabled = disabled;
+        additionalServiceButtons.forEach(button => { button.disabled = disabled; });
 
         serviceButtons.forEach(button => {
             button.disabled = disabled;
@@ -198,6 +212,60 @@
             }
         });
     }
+
+    function updateAdditionalServices(serviceId, selectedId = '') {
+        if (!additionalServiceButtons.length) return;
+
+        let selectedIsAvailable = false;
+        additionalServiceButtons.forEach(button => {
+            const id = button.dataset.additionalServiceId || '';
+            const optionServiceId = button.dataset.serviceId || '';
+            if (!id) {
+                button.classList.remove('hidden');
+                if (!selectedId) selectedIsAvailable = true;
+                return;
+            }
+
+            const available = String(optionServiceId) === String(serviceId);
+            button.classList.toggle('hidden', !available);
+            if (available && String(id) === String(selectedId)) {
+                selectedIsAvailable = true;
+            }
+        });
+
+        const activeId = selectedIsAvailable ? String(selectedId || '') : '';
+        if (selectedAdditionalServiceInput) {
+            selectedAdditionalServiceInput.value = activeId;
+        }
+
+        additionalServiceButtons.forEach(button => {
+            const selected = (button.dataset.additionalServiceId || '') === activeId;
+            button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            button.classList.remove('border-2', 'border-[#0d3b36]', 'border', 'border-gray-200');
+            button.classList.add(...(selected
+                ? ['border-2', 'border-[#0d3b36]']
+                : ['border', 'border-gray-200']));
+        });
+
+        const hasOptions = Array.from(additionalServiceButtons).some(
+            button => button.dataset.additionalServiceId && !button.classList.contains('hidden')
+        );
+        document.getElementById('additional-service-empty')?.classList.toggle('hidden', hasOptions);
+        additionalServiceButtons.forEach(button => {
+            button.disabled = !button.dataset.additionalServiceId && !hasOptions || Boolean(state.activeHold);
+        });
+        updateSummary();
+    }
+
+    additionalServiceButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            if (state.activeHold || state.creatingHold || state.releasingHold || button.classList.contains('hidden')) return;
+            updateAdditionalServices(
+                state.serviceId,
+                button.dataset.additionalServiceId || ''
+            );
+        });
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -500,6 +568,7 @@
         state.time = formatTime(hold.start_time);
         state.slotId = String(hold.slot_id);
         state.serviceId = String(hold.service_id);
+        updateAdditionalServices(state.serviceId, hold.additional_service_id || '');
 
         dateInput.value = state.date;
 
@@ -546,6 +615,7 @@
             }
 
             selectServiceButton(state.serviceId);
+            updateAdditionalServices(state.serviceId);
             updateContinueButton();
         });
     });
@@ -557,6 +627,8 @@
     state.serviceId = initialServiceId > 0
         ? String(initialServiceId)
         : '';
+
+    updateAdditionalServices(state.serviceId);
 
     /*
     |--------------------------------------------------------------------------
@@ -717,7 +789,7 @@
             'col-span-full mt-2 text-[11px] text-gray-500';
 
         information.textContent =
-            'Kapasitas maksimal 3 pelanggan per jam. Dua slot 30 menit dalam satu jam berbagi kapasitas yang sama.';
+            'Kapasitas maksimal 3 pelanggan untuk setiap slot satu jam.';
 
         timeGroup.append(information);
 
@@ -788,12 +860,70 @@
     |--------------------------------------------------------------------------
     */
 
+    function confirmReleaseHold() {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4';
+            overlay.setAttribute('role', 'presentation');
+
+            const modal = document.createElement('div');
+            modal.className = 'w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 text-[#0d3b36] shadow-xl';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'release-hold-title');
+            modal.setAttribute('aria-describedby', 'release-hold-description');
+
+            const title = document.createElement('h2');
+            title.id = 'release-hold-title';
+            title.className = 'text-lg font-bold';
+            title.textContent = 'Pilih waktu lain?';
+
+            const description = document.createElement('p');
+            description.id = 'release-hold-description';
+            description.className = 'text-sm text-gray-600';
+            description.textContent = 'Booking sebelumnya akan dilepas agar Anda dapat memilih waktu lain.';
+
+            const actions = document.createElement('div');
+            actions.className = 'flex justify-end gap-2';
+
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.className = 'px-4 py-2 text-sm font-semibold hover:bg-gray-50 rounded-lg';
+            cancelButton.textContent = 'Batal';
+
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'button';
+            confirmButton.className = 'rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700';
+            confirmButton.textContent = 'Ya, Pilih Waktu Lain';
+
+            actions.append(cancelButton, confirmButton);
+            modal.append(title, description, actions);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            const close = confirmed => {
+                document.removeEventListener('keydown', onKeydown);
+                overlay.remove();
+                resolve(confirmed);
+            };
+            const onKeydown = event => {
+                if (event.key === 'Escape') close(false);
+            };
+
+            cancelButton.addEventListener('click', () => close(false));
+            confirmButton.addEventListener('click', () => close(true));
+            overlay.addEventListener('click', event => {
+                if (event.target === overlay) close(false);
+            });
+            document.addEventListener('keydown', onKeydown);
+            cancelButton.focus();
+        });
+    }
+
     async function releaseExistingHold() {
         if (!state.activeHold || state.releasingHold) return;
 
-        const confirmed = window.confirm(
-            'Booking sebelumnya akan dilepas. Apakah Anda ingin memilih waktu lain?'
-        );
+        const confirmed = await confirmReleaseHold();
 
         if (!confirmed) return;
 
@@ -884,7 +1014,9 @@
                 action: 'create_hold',
                 slot_id: Number(state.slotId),
                 service_id: Number(state.serviceId),
-                additional_service_id: null
+                additional_service_id: selectedAdditionalServiceInput?.value
+                    ? Number(selectedAdditionalServiceInput.value)
+                    : null
             });
 
             const hold = payload.data;
@@ -1000,88 +1132,5 @@
     });
 
 })();
-
-// booking page
-
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Ambil Data Layanan dari API saat halaman dimuat
-    fetch('../../backend/api/get_services.php')
-        .then(response => response.json())
-        .then(res => {
-            const container = document.getElementById('services-container');
-            container.innerHTML = ''; // Hapus tulisan "Memuat layanan..."
-
-            if (res.status === 'success' && res.data.length > 0) {
-                res.data.forEach(service => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    // Styling menyesuaikan kondisi aktif/tidak via event listener (bisa ditambahkan logika css di event click-nya nanti)
-                    btn.className = "service-option aspect-square overflow-hidden rounded-2xl bg-white p-4 text-left shadow-sm transition-all duration-200 flex flex-col justify-between border border-gray-200 hover:border-[#0d3b36]";
-                    btn.dataset.serviceId = service.service_id;
-                    
-                    // Format mata uang IDR
-                    const priceFormatted = new Intl.NumberFormat('id-ID').format(service.price);
-
-                    btn.innerHTML = `
-                      <span>
-                        <span class="block text-sm font-bold leading-tight text-[#0d3b36]">${service.service_name}</span>
-                        <span class="mt-2 block text-[11px] text-gray-600">${service.description || 'Layanan barber'}</span>
-                      </span>
-                      <span>
-                        <span class="block text-[10px] text-gray-400">Biaya layanan</span>
-                        <span class="text-sm font-bold text-[#0d3b36]">Rp ${priceFormatted}</span>
-                      </span>
-                    `;
-                    
-                    // Event ketika layanan diklik
-                    btn.addEventListener('click', function() {
-                        // Reset semua border layanan
-                        document.querySelectorAll('.service-option').forEach(b => {
-                            b.classList.remove('border-2', 'border-[#0d3b36]');
-                            b.classList.add('border', 'border-gray-200');
-                        });
-                        // Set layanan aktif
-                        this.classList.remove('border', 'border-gray-200');
-                        this.classList.add('border-2', 'border-[#0d3b36]');
-                        
-                        document.getElementById('selected-service-id').value = service.service_id;
-                    });
-                    
-                    container.appendChild(btn);
-                });
-            } else {
-                container.innerHTML = '<p class="col-span-full rounded-xl bg-white p-5 text-sm text-gray-500">Belum ada layanan aktif.</p>';
-            }
-        });
-
-    // 2. Submit Form via API
-    document.getElementById('booking-form').addEventListener('submit', function(e) {
-        e.preventDefault(); // Mencegah form reload bawaan browser
-        const errorAlert = document.getElementById('error-alert');
-        errorAlert.classList.add('hidden'); // Sembunyikan error lama
-        
-        const formData = new FormData(this);
-
-        fetch('../../backend/api/submit_booking.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(res => {
-            if (res.status === 'success') {
-                // Backend menyetujui, alihkan pengguna!
-                window.location.href = res.redirect_url;
-            } else {
-                // Tampilkan pesan error dari backend
-                errorAlert.textContent = res.message;
-                errorAlert.classList.remove('hidden');
-            }
-        })
-        .catch(err => {
-            errorAlert.textContent = "Terjadi kesalahan jaringan.";
-            errorAlert.classList.remove('hidden');
-        });
-    });
-});
 
 

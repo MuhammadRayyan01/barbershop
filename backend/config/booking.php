@@ -7,7 +7,7 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 |
 | Each clock hour has a maximum capacity of 3 bookings.
-| The two 30-minute slots within that hour share this capacity.
+| Each one-hour slot uses this capacity.
 |
 */
 
@@ -17,7 +17,7 @@ const BOOKING_HOLD_DURATION_MINUTES = 5;
 const BOOKING_OPENING_TIME = '10:00:00';
 const BOOKING_CLOSING_TIME = '22:00:00';
 
-const BOOKING_SLOT_INTERVAL_MINUTES = 30;
+const BOOKING_SLOT_INTERVAL_MINUTES = 60;
 
 const BOOKING_TIMEZONE = 'Asia/Jakarta';
 
@@ -27,7 +27,7 @@ const BOOKING_TIMEZONE = 'Asia/Jakarta';
 | Generate time slots for a date
 |--------------------------------------------------------------------------
 |
-| Creates 30-minute slots from 10:00 until 22:00.
+| Creates one-hour slots from 10:00 until 22:00.
 | Existing slots are not duplicated.
 |
 */
@@ -53,11 +53,11 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
         SELECT
             CAST(:slot_date AS date),
             times.start_time::time,
-            (times.start_time + INTERVAL '30 minutes')::time
+            (times.start_time + INTERVAL '1 hour')::time
         FROM generate_series(
             TIMESTAMP '2000-01-01 10:00:00',
-            TIMESTAMP '2000-01-01 21:30:00',
-            INTERVAL '30 minutes'
+            TIMESTAMP '2000-01-01 21:00:00',
+            INTERVAL '1 hour'
         ) AS times(start_time)
         ON CONFLICT (slot_date, start_time, end_time)
         DO NOTHING"
@@ -100,7 +100,7 @@ function expireBookingHolds(PDO $pdo): int
 | Lock a date and clock hour
 |--------------------------------------------------------------------------
 |
-| Both 10:00 and 10:30 use the same lock.
+| Requests for a clock hour use the same lock.
 | This prevents simultaneous requests from exceeding hourly capacity.
 |
 | IMPORTANT:
@@ -202,7 +202,7 @@ function getBookingSlot(PDO $pdo, int $slotId): ?array
 | 1. Active permanent reservations.
 | 2. Active temporary holds that have not expired.
 |
-| Both half-hour slots share the same result.
+| All booking records in the clock hour count toward the slot capacity.
 |
 */
 
