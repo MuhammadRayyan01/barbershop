@@ -34,16 +34,18 @@ if ($requestMethod === 'POST') {
         $name = trim((string) ($_POST['service_name'] ?? ''));
         $description = trim((string) ($_POST['description'] ?? ''));
         $priceText = preg_replace('/\D+/', '', (string) ($_POST['price'] ?? ''));
-        $editData = ['service_id' => $serviceId ?: '', 'service_name' => $name, 'price' => $priceText, 'description' => $description];
-        if (!$serviceId || $serviceId < 1 || $name === '' || strlen($name) > 255 || $priceText === '' || (float) $priceText > 99999999.99 || strlen($description) > 10000) {
-            throw new InvalidArgumentException('Periksa kembali nama, harga, dan deskripsi layanan.');
+        $durationMinutes = filter_var($_POST['duration_minutes'] ?? null, FILTER_VALIDATE_INT);
+        $editData = ['service_id' => $serviceId ?: '', 'service_name' => $name, 'price' => $priceText, 'description' => $description, 'duration_minutes' => $_POST['duration_minutes'] ?? ''];
+        if (!$serviceId || $serviceId < 1 || $name === '' || strlen($name) > 255 || $priceText === '' || (float) $priceText > 99999999.99 || strlen($description) > 10000 || $durationMinutes === false || $durationMinutes < 15 || $durationMinutes > 240) {
+            throw new InvalidArgumentException('Periksa kembali nama, harga, deskripsi, dan durasi (15–240 menit).');
         }
 
-        $stmt = $pdo->prepare("UPDATE service SET service_name = :name, description = :description, price = :price, updated_at = CURRENT_TIMESTAMP WHERE service_id = :id AND status = 'active' RETURNING service_id");
+        $stmt = $pdo->prepare("UPDATE service SET service_name = :name, description = :description, price = :price, duration_minutes = :duration_minutes, updated_at = CURRENT_TIMESTAMP WHERE service_id = :id AND status = 'active' RETURNING service_id");
         $stmt->execute([
             'name' => $name,
             'description' => $description === '' ? null : $description,
             'price' => $priceText,
+            'duration_minutes' => $durationMinutes,
             'id' => $serviceId,
         ]);
         if (!$stmt->fetchColumn()) throw new InvalidArgumentException('Layanan aktif tidak ditemukan.');
@@ -102,28 +104,30 @@ $adminPageScript = '../assets/js/admin-services.js';
 
     <section class="bg-white rounded-2xl shadow-sm mt-5 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm min-w-[760px]">
+        <table class="w-full text-sm min-w-[900px]">
           <thead class="bg-indigo-50/60 text-[11px] tracking-wider text-slate-500 uppercase">
             <tr>
               <th class="text-left font-semibold px-4 py-3 w-14">#</th>
               <th class="text-left font-semibold px-4 py-3">Service Name</th>
               <th class="text-left font-semibold px-4 py-3">Description</th>
+              <th class="text-center font-semibold px-4 py-3">Durasi</th>
               <th class="text-right font-semibold px-4 py-3">Price</th>
               <th class="text-right font-semibold px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody id="svc-body" class="divide-y divide-slate-100">
             <?php if ($services === []): ?>
-              <tr><td colspan="5" class="px-4 py-10 text-center text-slate-500">Belum ada layanan aktif.</td></tr>
+              <tr><td colspan="6" class="px-4 py-10 text-center text-slate-500">Belum ada layanan aktif.</td></tr>
             <?php else: foreach ($services as $service): ?>
               <tr class="service-row hover:bg-slate-50" data-name="<?= $escape($service['service_name']) ?>" data-description="<?= $escape($service['description'] ?? '') ?>">
                 <td class="px-4 py-5 text-slate-400"><?= str_pad((string) $service['service_id'], 2, '0', STR_PAD_LEFT) ?></td>
                 <td class="px-4 py-5 font-semibold w-52 service-name"><?= $escape($service['service_name']) ?></td>
                 <td class="px-4 py-5 text-xs text-slate-600 max-w-sm service-description"><?= $escape($service['description'] ?? '-') ?></td>
+                <td class="px-4 py-5 text-center whitespace-nowrap"><?= (int) $service['duration_minutes'] ?> menit</td>
                 <td class="px-4 py-5 text-right font-bold whitespace-nowrap service-price">Rp <?= number_format((float) $service['price'], 0, ',', '.') ?></td>
                 <td class="px-4 py-5">
                   <div class="flex items-center justify-end gap-3">
-                    <button type="button" data-act="edit" data-id="<?= (int) $service['service_id'] ?>" data-name="<?= $escape($service['service_name']) ?>" data-price="<?= $escape($service['price']) ?>" data-description="<?= $escape($service['description'] ?? '') ?>" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-900 text-xs font-semibold hover:bg-emerald-200"><span class="material-symbols-outlined text-[16px]">edit</span>Update</button>
+                    <button type="button" data-act="edit" data-id="<?= (int) $service['service_id'] ?>" data-name="<?= $escape($service['service_name']) ?>" data-price="<?= $escape($service['price']) ?>" data-description="<?= $escape($service['description'] ?? '') ?>" data-duration="<?= (int) $service['duration_minutes'] ?>" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-900 text-xs font-semibold hover:bg-emerald-200"><span class="material-symbols-outlined text-[16px]">edit</span>Update</button>
                     <button type="button" data-act="deactivate" data-id="<?= (int) $service['service_id'] ?>" data-name="<?= $escape($service['service_name']) ?>" class="p-1 text-slate-500 hover:text-red-600" aria-label="Arsipkan" title="Nonaktifkan layanan"><span class="material-symbols-outlined text-[20px]">inventory_2</span></button>
                   </div>
                 </td>
@@ -159,6 +163,14 @@ $adminPageScript = '../assets/js/admin-services.js';
             <span class="material-symbols-outlined text-[20px] text-slate-500">payments</span>
             <span class="text-sm text-slate-500">Rp</span>
             <input id="f-price" name="price" type="text" value="<?= $escape($editData['price']) ?>" inputmode="numeric" class="w-full bg-transparent outline-none text-sm">
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-2"><label for="f-duration" class="text-sm font-semibold">Durasi layanan</label><span class="text-[11px] text-slate-400">15–240 menit</span></div>
+          <div class="flex items-center gap-3 bg-[#f8f8fd] border border-slate-100 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-[#0d3b36]/40">
+            <span class="material-symbols-outlined text-[20px] text-slate-500">schedule</span>
+            <input id="f-duration" name="duration_minutes" type="number" min="15" max="240" step="5" value="<?= $escape($editData['duration_minutes']) ?>" required class="w-full bg-transparent outline-none text-sm">
+            <span class="text-sm text-slate-500">menit</span>
           </div>
         </div>
         <div>
