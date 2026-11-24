@@ -63,11 +63,9 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
         DO NOTHING"
     );
 
-    $stmt->execute([
-        'slot_date' => $date,
-        'slot_duration_minutes' => BOOKING_SLOT_INTERVAL_MINUTES,
-        'slot_interval_minutes' => BOOKING_SLOT_INTERVAL_MINUTES,
-    ]);
+ $stmt->execute([
+    'slot_date' => $date,
+]);
 }
 
 

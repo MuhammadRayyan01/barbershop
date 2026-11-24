@@ -92,7 +92,6 @@ try {
         ORDER BY hs.slot_date, hs.start_time");
     $stmt->execute([
         'month_start' => $monthStart->format('Y-m-d'),
-        'today' => $today->format('Y-m-d'),
         'month_end' => $monthEnd->format('Y-m-d'),
         'settings_start' => $monthStart->format('Y-m-d'),
         'settings_end' => $monthEnd->format('Y-m-d'),
