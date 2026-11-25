@@ -530,43 +530,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const now = new Date();
 
-            const upcomingReservations = reservations.filter(
-                (reservation) => {
-
+            const upcomingReservations = reservations
+                .filter((reservation) => {
                     const appointment = new Date(
                         `${reservation.slot_date}T${reservation.start_time}+07:00`
                     );
 
                     return (
                         reservation.reservation_status === 'active' &&
+                        !reservation.admin_cancelled_at &&
                         !Number.isNaN(appointment.getTime()) &&
                         appointment >= now
                     );
-                }
-<<<<<<< HEAD
-            ).sort((a, b) => {
-                const timeA = new Date(`${a.slot_date}T${a.start_time}+07:00`);
-                const timeB = new Date(`${b.slot_date}T${b.start_time}+07:00`);
-                return timeA - timeB;
-            });
-=======
-            );
-            const adminCancelledReservations = reservations.filter(
-                (reservation) => Boolean(reservation.admin_cancelled_at)
-            );
+                })
+                .sort((a, b) => {
+                    const timeA = new Date(`${a.slot_date}T${a.start_time}+07:00`);
+                    const timeB = new Date(`${b.slot_date}T${b.start_time}+07:00`);
+                    return timeA - timeB;
+                });
+
+            const adminCancelledReservations = reservations
+                .filter((reservation) => Boolean(reservation.admin_cancelled_at))
+                .sort((a, b) => String(b.admin_cancelled_at).localeCompare(String(a.admin_cancelled_at)));
+
+            // Keep the dashboard concise while showing recent admin cancellations
+            // alongside the next few active appointments.
             const dashboardReservations = [
-                ...adminCancelledReservations,
-                ...upcomingReservations.filter((reservation) => !reservation.admin_cancelled_at)
+                ...adminCancelledReservations.slice(0, 3),
+                ...upcomingReservations.slice(0, 3)
             ];
 
-            const pendingPayments = reservations.filter(
-                (reservation) => {
-
-                    return reservation.reservation_status === 'active' &&
-                        reservation.payment_status === 'pending';
-                }
-            );
->>>>>>> 91b795eb5f32011335213c30fbb96f5d76966fec
+            const pendingPayments = reservations.filter((reservation) => (
+                reservation.reservation_status === 'active' &&
+                reservation.payment_status === 'pending'
+            ));
 
             if (reservationCount) {
 
@@ -584,13 +581,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             reservationContainer.replaceChildren();
 
-<<<<<<< HEAD
-            if (upcomingReservations.length === 0) {
+            if (dashboardReservations.length === 0) {
                 const emptyState = document.createElement('div');
                 emptyState.className = 'rounded-2xl bg-[#f8fbf9] px-5 py-8 text-center';
-=======
-            if (dashboardReservations.length === 0) {
->>>>>>> 91b795eb5f32011335213c30fbb96f5d76966fec
 
                 const emptyMessage = document.createElement('p');
                 emptyMessage.className = 'text-sm text-gray-600';
@@ -602,35 +595,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-<<<<<<< HEAD
-            const nextReservation = upcomingReservations[0];
-            const nextAppointment = new Date(
-                `${nextReservation.slot_date}T${nextReservation.start_time}+07:00`
-            );
-            const hoursUntilNextAppointment = (nextAppointment - now) / (1000 * 60 * 60);
+            if (upcomingReservations.length > 0) {
+                const nextReservation = upcomingReservations[0];
+                const nextAppointment = new Date(
+                    `${nextReservation.slot_date}T${nextReservation.start_time}+07:00`
+                );
+                const hoursUntilNextAppointment = (nextAppointment - now) / (1000 * 60 * 60);
 
-            if (hoursUntilNextAppointment <= 24) {
-                const reminder = document.createElement('div');
-                reminder.setAttribute('role', 'status');
-                reminder.className = 'mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900';
+                if (hoursUntilNextAppointment <= 24) {
+                    const reminder = document.createElement('div');
+                    reminder.setAttribute('role', 'status');
+                    reminder.className = 'mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900';
 
-                const reminderTitle = document.createElement('p');
-                reminderTitle.className = 'font-bold';
-                reminderTitle.textContent = 'Pengingat reservasi';
+                    const reminderTitle = document.createElement('p');
+                    reminderTitle.className = 'font-bold';
+                    reminderTitle.textContent = 'Pengingat reservasi';
 
-                const reminderText = document.createElement('p');
-                reminderText.className = 'mt-1';
-                reminderText.textContent = `${nextReservation.service_name || 'Reservasi Anda'} dijadwalkan ${formatReservationDate(nextReservation.slot_date, nextReservation.start_time)}. Silakan datang 10 menit lebih awal.`;
+                    const reminderText = document.createElement('p');
+                    reminderText.className = 'mt-1';
+                    reminderText.textContent = `${nextReservation.service_name || 'Reservasi Anda'} dijadwalkan ${formatReservationDate(nextReservation.slot_date, nextReservation.start_time)}. Silakan datang 10 menit lebih awal.`;
 
-                reminder.append(reminderTitle, reminderText);
-                reservationContainer.appendChild(reminder);
+                    reminder.append(reminderTitle, reminderText);
+                    reservationContainer.appendChild(reminder);
+                }
             }
 
-            upcomingReservations.slice(0, 3).forEach((reservation) => {
-=======
             dashboardReservations.forEach((reservation) => {
                 const adminCancelled = Boolean(reservation.admin_cancelled_at);
->>>>>>> 91b795eb5f32011335213c30fbb96f5d76966fec
 
                 const card = document.createElement('article');
 
@@ -891,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 reservationContainer.appendChild(card);
             });
 
-            if (upcomingReservations.length > 3) {
+            if (upcomingReservations.length > 3 || adminCancelledReservations.length > 3) {
                 const allLink = document.createElement('a');
                 allLink.href = 'reservations.php';
                 allLink.className = 'inline-flex pt-1 text-sm font-semibold text-[#0d3b36] hover:underline';
