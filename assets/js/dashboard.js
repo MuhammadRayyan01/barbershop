@@ -716,15 +716,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     const notice = document.createElement('p');
                     notice.className = 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900';
                     if (reservation.refund_status === 'completed' || reservation.payment_status === 'refunded') {
-                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Dana telah dikembalikan.';
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Dana telah dikembalikan ke bank atau e-wallet yang Anda gunakan.';
                     } else if (reservation.refund_status === 'pending' && reservation.refund_method === 'manual') {
-                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Pengembalian dana sedang diproses langsung oleh barbershop.';
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pengembalian dana sedang diproses oleh barbershop.';
                     } else if (reservation.refund_status === 'pending') {
-                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Pengembalian dana sedang diproses melalui Midtrans.';
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pembayaran akan dikembalikan ke bank atau e-wallet yang Anda gunakan.';
+                    } else if (reservation.admin_cancel_outcome === 'capture_voided') {
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pembayaran akan dikembalikan ke bank atau e-wallet yang Anda gunakan.';
+                    } else if (reservation.admin_cancel_outcome === 'authorization_voided') {
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pembayaran akan dikembalikan ke bank atau e-wallet yang Anda gunakan.';
+                    } else if (reservation.admin_cancel_outcome === 'pending_cancelled') {
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Jika Anda sudah membayar, dana akan dikembalikan ke bank atau e-wallet yang Anda gunakan.';
+                    } else if (reservation.admin_cancel_outcome === 'no_payment') {
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Tidak ada pembayaran yang perlu dikembalikan.';
+                    } else if (reservation.payment_status === 'cancelled' && reservation.transaction_reference) {
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pembayaran akan dikembalikan ke bank atau e-wallet yang Anda gunakan.';
                     } else if (reservation.payment_status === 'cancelled' || reservation.payment_status === 'failed' || reservation.payment_status === 'pending') {
-                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Tidak ada pembayaran yang berhasil, jadi tidak ada dana yang perlu dikembalikan.';
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Tidak ada pembayaran yang perlu dikembalikan.';
                     } else {
-                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Barbershop akan memproses pengembalian dana.';
+                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pengembalian dana akan diproses.';
                     }
                     details.appendChild(notice);
                 }

@@ -46,6 +46,8 @@ if ($method === 'GET') {
                 ) AS total_payment,
                 i.cancellation_deadline,
                 p.payment_status::text AS payment_status,
+                p.transaction_reference,
+                p.admin_cancel_outcome,
                 p.refund_status,
                 p.refund_method,
                 CASE
