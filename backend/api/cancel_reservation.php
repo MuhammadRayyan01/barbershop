@@ -27,7 +27,10 @@ $userId = filter_var(
     FILTER_VALIDATE_INT
 );
 
-if ($userId === false || $userId === null || $userId <= 0) {
+$adminId = filter_var($_SESSION['admin_id'] ?? null, FILTER_VALIDATE_INT);
+$isAdmin = $adminId !== false && $adminId !== null && $adminId > 0;
+
+if (($userId === false || $userId === null || $userId <= 0) && !$isAdmin) {
     jsonResponse(401, [
         'success' => false,
         'message' => 'Please log in first.'
@@ -117,6 +120,7 @@ try {
             r.reservation_id,
             r.user_id,
             r.reservation_status,
+            r.admin_cancelled_at,
             i.cancellation_deadline,
             CASE
                 WHEN (clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
@@ -128,6 +132,7 @@ try {
             p.payment_status::text AS payment_status,
             p.amount,
             p.transaction_reference,
+            p.payment_type,
             p.refund_status,
             p.refund_key
         FROM reservation r
@@ -136,14 +141,15 @@ try {
         INNER JOIN payment p
             ON p.reservation_id = r.reservation_id
         WHERE r.reservation_id = :reservation_id
-          AND r.user_id = :user_id
+          AND (:is_admin = TRUE OR r.user_id = :user_id)
         LIMIT 1
         FOR UPDATE OF r, i, p
     ");
 
     $stmt->execute([
         ':reservation_id' => $reservationId,
-        ':user_id' => $userId
+        ':user_id' => $userId ?: 0,
+        ':is_admin' => $isAdmin
     ]);
 
     $booking = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -157,10 +163,17 @@ try {
         ]);
     }
 
+    // Use the owner from the locked reservation for internal ownership checks.
+    $userId = (int) $booking['user_id'];
+
     if (
         $booking['payment_status'] === 'refunded' &&
         $booking['refund_status'] === 'completed'
     ) {
+        if ($isAdmin) {
+            $stmt = $pdo->prepare("UPDATE reservation SET reservation_status = 'inactive', admin_cancelled_at = COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta'), updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta' WHERE reservation_id = :reservation_id");
+            $stmt->execute([':reservation_id' => $reservationId]);
+        }
         $pdo->commit();
 
         jsonResponse(200, [
@@ -176,6 +189,10 @@ try {
         $booking['refund_status'] === 'not_requested' &&
         $booking['reservation_status'] === 'inactive'
     ) {
+        if ($isAdmin && $booking['admin_cancelled_at'] === null) {
+            $stmt = $pdo->prepare("UPDATE reservation SET admin_cancelled_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta' WHERE reservation_id = :reservation_id");
+            $stmt->execute([':reservation_id' => $reservationId]);
+        }
         $pdo->commit();
 
         jsonResponse(200, [
@@ -207,6 +224,83 @@ try {
         ]);
     }
 
+    if (
+        $isAdmin &&
+        $booking['payment_status'] === 'paid' &&
+        strtolower((string) $booking['payment_type']) === 'cash'
+    ) {
+        $refundKey = is_string($booking['refund_key']) && $booking['refund_key'] !== ''
+            ? $booking['refund_key']
+            : 'PEMON-MANUAL-' . $booking['payment_id'] . '-' . bin2hex(random_bytes(8));
+        $manualRefund = $pdo->prepare("
+            UPDATE payment
+            SET refund_status = 'pending',
+                refund_method = 'manual',
+                refund_key = :refund_key,
+                refund_reason = 'Reservation cancelled by barbershop',
+                refund_requested_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta',
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE payment_id = :payment_id
+              AND payment_status = 'paid'
+              AND refund_status IN ('not_requested', 'pending')
+        ");
+        $manualRefund->execute([
+            ':refund_key' => $refundKey,
+            ':payment_id' => $booking['payment_id']
+        ]);
+        if ($manualRefund->rowCount() !== 1 && $booking['refund_status'] !== 'pending') {
+            $pdo->rollBack();
+            jsonResponse(409, ['success' => false, 'message' => 'The payment is not ready for a manual refund.']);
+        }
+        $cancel = $pdo->prepare("
+            UPDATE reservation
+            SET reservation_status = 'inactive',
+                admin_cancelled_at = COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta'),
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE reservation_id = :reservation_id
+        ");
+        $cancel->execute([':reservation_id' => $reservationId]);
+        $pdo->commit();
+        jsonResponse(200, [
+            'success' => true,
+            'payment_status' => 'paid',
+            'refund_status' => 'pending',
+            'refund_method' => 'manual',
+            'message' => 'Reservation cancelled. The barbershop must send the cash refund manually.'
+        ]);
+    }
+
+    if (
+        $isAdmin &&
+        $booking['payment_status'] !== 'paid' &&
+        (!is_string($booking['transaction_reference']) || $booking['transaction_reference'] === '')
+    ) {
+        $cancel = $pdo->prepare("
+            UPDATE reservation
+            SET reservation_status = 'inactive',
+                admin_cancelled_at = COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta'),
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE reservation_id = :reservation_id
+              AND reservation_status = 'active'
+        ");
+        $cancel->execute([':reservation_id' => $reservationId]);
+        $paymentCancel = $pdo->prepare("
+            UPDATE payment
+            SET payment_status = 'cancelled',
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE payment_id = :payment_id
+              AND payment_status IN ('pending', 'verification pending', 'failed')
+        ");
+        $paymentCancel->execute([':payment_id' => $booking['payment_id']]);
+        $pdo->commit();
+        jsonResponse(200, [
+            'success' => true,
+            'payment_status' => 'cancelled',
+            'refund_status' => 'not_requested',
+            'message' => 'Reservation cancelled. No payment was captured, so no refund is needed.'
+        ]);
+    }
+
     // An inactive reservation may be retried only when its refund intent
     // already exists. This lets a captured payment proceed after settlement.
     $isRetry = $booking['refund_status'] === 'pending';
@@ -223,7 +317,7 @@ try {
         ]);
     }
 
-    if ($booking['payment_status'] !== 'paid') {
+    if (!$isAdmin && $booking['payment_status'] !== 'paid') {
         $pdo->rollBack();
 
         jsonResponse(409, [
@@ -234,6 +328,7 @@ try {
 
     // A pending refund can be checked again without creating a new key.
     if (
+        !$isAdmin &&
         !$isRetry &&
         (int) $booking['within_window'] !== 1
     ) {
@@ -318,6 +413,40 @@ if (
     ]);
 }
 
+// The webhook may have been delayed. If Midtrans confirms a successful
+// transaction, reconcile the local payment before selecting the refund path.
+if (
+    $isAdmin &&
+    $booking['payment_status'] !== 'paid' &&
+    in_array($transaction['transaction_status'] ?? '', ['capture', 'settlement', 'refund', 'partial_refund'], true)
+) {
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare("
+            UPDATE payment
+            SET payment_status = 'paid',
+                updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+            WHERE payment_id = :payment_id
+              AND payment_status IN ('pending', 'verification pending', 'failed', 'cancelled')
+        ");
+        $stmt->execute([':payment_id' => $booking['payment_id']]);
+        if ($stmt->rowCount() !== 1) {
+            throw new RuntimeException('Could not reconcile the successful Midtrans payment.');
+        }
+        $pdo->commit();
+        $booking['payment_status'] = 'paid';
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Admin cancellation payment reconciliation error: ' . $e->getMessage());
+        jsonResponse(409, [
+            'success' => false,
+            'message' => 'Midtrans shows a successful payment, but the local payment status could not be reconciled. Please retry or contact support.'
+        ]);
+    }
+}
+
 // Find a refund record using the exact stored refund key.
 $findMatchingRefund = static function (
     array $transaction,
@@ -373,7 +502,8 @@ $finalizeCardCancellation = static function () use (
     $pdo,
     $booking,
     $reservationId,
-    $userId
+    $userId,
+    $isAdmin
 ): void {
     try {
         $pdo->beginTransaction();
@@ -381,6 +511,7 @@ $finalizeCardCancellation = static function () use (
         $stmt = $pdo->prepare("
             SELECT
                 r.reservation_status,
+                r.admin_cancelled_at,
                 p.payment_status::text AS payment_status,
                 p.refund_status
             FROM reservation r
@@ -410,6 +541,13 @@ $finalizeCardCancellation = static function () use (
             $current['payment_status'] === 'cancelled' &&
             $current['refund_status'] === 'not_requested'
         ) {
+            if ($isAdmin && $current['admin_cancelled_at'] === null) {
+                $pdo->prepare("
+                    UPDATE reservation
+                    SET admin_cancelled_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+                    WHERE reservation_id = :reservation_id
+                ")->execute([':reservation_id' => $reservationId]);
+            }
             $pdo->commit();
             return;
         }
@@ -417,7 +555,8 @@ $finalizeCardCancellation = static function () use (
         // A confirmed Midtrans cancellation can clear an old pending
         // intent, because a cancelled transaction is not a refund.
         if (
-            $current['payment_status'] !== 'paid' ||
+            (!$isAdmin && $current['payment_status'] !== 'paid') ||
+            ($isAdmin && !in_array($current['payment_status'], ['paid', 'pending', 'verification pending', 'failed'], true)) ||
             !in_array(
                 $current['refund_status'],
                 ['not_requested', 'pending'],
@@ -429,6 +568,9 @@ $finalizeCardCancellation = static function () use (
             );
         }
 
+        $paymentStatusCondition = $isAdmin
+            ? "payment_status IN ('paid', 'pending', 'verification pending', 'failed')"
+            : "payment_status = 'paid'";
         $stmt = $pdo->prepare("
             UPDATE payment
             SET
@@ -440,7 +582,7 @@ $finalizeCardCancellation = static function () use (
                 refunded_at = NULL,
                 updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
             WHERE payment_id = :payment_id
-              AND payment_status = 'paid'
+              AND $paymentStatusCondition
               AND refund_status IN ('not_requested', 'pending')
         ");
 
@@ -458,12 +600,17 @@ $finalizeCardCancellation = static function () use (
             UPDATE reservation
             SET
                 reservation_status = 'inactive',
+                admin_cancelled_at = CASE
+                    WHEN :is_admin THEN COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
+                    ELSE admin_cancelled_at
+                END,
                 updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
             WHERE reservation_id = :reservation_id
         ");
 
         $stmt->execute([
-            ':reservation_id' => $reservationId
+            ':reservation_id' => $reservationId,
+            ':is_admin' => $isAdmin
         ]);
 
         $pdo->commit();
@@ -497,6 +644,88 @@ if ($transactionStatus === 'cancel') {
         jsonResponse(500, [
             'success' => false,
             'message' => 'Midtrans cancelled the transaction, but the reservation update failed. Please contact the barbershop.'
+        ]);
+    }
+}
+
+// Pending and authorized Midtrans payments can be cancelled, but not refunded.
+if ($isAdmin && in_array($transactionStatus, ['pending', 'authorize'], true)) {
+    try {
+        $cancelResponse = midtransCancelTransaction($orderId);
+        $cancelOrderId = $cancelResponse['order_id'] ?? null;
+        $cancelAmount = $normalizeAmount($cancelResponse['gross_amount'] ?? null);
+        if (
+            !is_string($cancelOrderId) ||
+            !hash_equals($orderId, $cancelOrderId) ||
+            ($cancelResponse['transaction_status'] ?? '') !== 'cancel' ||
+            $cancelAmount !== $paymentAmount
+        ) {
+            throw new RuntimeException('Midtrans cancellation response could not be verified.');
+        }
+        $finalizeCardCancellation();
+        jsonResponse(200, [
+            'success' => true,
+            'payment_status' => 'cancelled',
+            'refund_status' => 'not_requested',
+            'message' => 'Reservation cancelled through Midtrans. No refund is needed because the payment was not settled.'
+        ]);
+    } catch (Throwable $e) {
+        error_log('Admin Midtrans pending cancellation error: ' . $e->getMessage());
+        try {
+            $latestTransaction = midtransGetTransactionStatus($orderId);
+            $latestOrderId = $latestTransaction['order_id'] ?? null;
+            $latestAmount = $normalizeAmount($latestTransaction['gross_amount'] ?? null);
+            if (
+                !is_string($latestOrderId) ||
+                !hash_equals($orderId, $latestOrderId) ||
+                $latestAmount !== $paymentAmount
+            ) {
+                throw new RuntimeException('Updated Midtrans transaction could not be verified.');
+            }
+            $latestStatus = $latestTransaction['transaction_status'] ?? '';
+            if ($latestStatus === 'cancel') {
+                $finalizeCardCancellation();
+                jsonResponse(200, [
+                    'success' => true,
+                    'payment_status' => 'cancelled',
+                    'refund_status' => 'not_requested',
+                    'message' => 'Reservation cancelled through Midtrans. No refund is needed because the payment was not settled.'
+                ]);
+            }
+            if (in_array($latestStatus, ['settlement', 'capture'], true)) {
+                $transaction = $latestTransaction;
+                $transactionStatus = $latestStatus;
+                $transactionIdentifier = $latestTransaction['transaction_id'] ?? $orderId;
+            } else {
+                jsonResponse(503, [
+                    'success' => false,
+                    'message' => 'Midtrans has not confirmed cancellation. No reservation or payment state was changed; please retry.'
+                ]);
+            }
+        } catch (Throwable $statusError) {
+            error_log('Admin Midtrans cancellation recheck error: ' . $statusError->getMessage());
+            jsonResponse(503, [
+                'success' => false,
+                'message' => 'Unable to verify the payment cancellation with Midtrans. Please retry.'
+            ]);
+        }
+    }
+}
+
+if ($isAdmin && in_array($transactionStatus, ['expire', 'deny', 'failure'], true)) {
+    try {
+        $finalizeCardCancellation();
+        jsonResponse(200, [
+            'success' => true,
+            'payment_status' => 'cancelled',
+            'refund_status' => 'not_requested',
+            'message' => 'Reservation cancelled. Midtrans confirms no settled payment, so no refund is needed.'
+        ]);
+    } catch (Throwable $e) {
+        error_log('Admin no-payment cancellation finalization error: ' . $e->getMessage());
+        jsonResponse(500, [
+            'success' => false,
+            'message' => 'Midtrans shows no settled payment, but the reservation could not be cancelled. Please retry.'
         ]);
     }
 }
@@ -568,7 +797,8 @@ if ($transactionStatus === 'capture') {
                 savePendingMidtransRefundIntent(
                     $pdo,
                     (int) $reservationId,
-                    (int) $userId
+                    (int) $userId,
+                    $isAdmin
                 );
 
                 // Close the race where settlement happened while the intent
@@ -826,6 +1056,7 @@ try {
 
     // Recheck the deadline before creating a new refund.
     if (
+        !$isAdmin &&
         $current['refund_status'] !== 'pending' &&
         (int) $current['within_window'] !== 1
     ) {
@@ -874,7 +1105,9 @@ try {
         $stmt->execute([
             ':refund_key' => $refundKey,
             ':refund_method' => $refundMethod,
-            ':refund_reason' => 'Customer cancellation within seven-minute period',
+            ':refund_reason' => $isAdmin
+                ? 'Reservation cancelled by barbershop'
+                : 'Customer cancellation within seven-minute period',
             ':payment_id' => $booking['payment_id']
         ]);
 
@@ -906,6 +1139,10 @@ try {
         UPDATE reservation
         SET
             reservation_status = 'inactive',
+            admin_cancelled_at = CASE
+                WHEN :is_admin THEN COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
+                ELSE admin_cancelled_at
+            END,
             updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
         WHERE reservation_id = :reservation_id
           AND user_id = :user_id
@@ -914,7 +1151,8 @@ try {
 
     $stmt->execute([
         ':reservation_id' => $reservationId,
-        ':user_id' => $userId
+        ':user_id' => $userId,
+        ':is_admin' => $isAdmin
     ]);
 
     $pdo->commit();
@@ -1016,7 +1254,9 @@ try {
         [
             'refund_key' => $refundKey,
             'amount' => $paymentAmount,
-            'reason' => 'Customer cancellation within seven-minute period'
+            'reason' => $isAdmin
+                ? 'Reservation cancelled by barbershop'
+                : 'Customer cancellation within seven-minute period'
         ]
     );
 
