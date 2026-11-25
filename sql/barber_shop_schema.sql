@@ -42,7 +42,8 @@ CREATE TYPE public.pay_status AS ENUM (
     'paid',
     'verification pending',
     'failed',
-    'refunded'
+    'refunded',
+    'cancelled'
 );
 
 
@@ -298,10 +299,15 @@ CREATE TABLE public.payment (
     payment_status public.pay_status DEFAULT 'pending'::public.pay_status NOT NULL,
     amount numeric(10,2) NOT NULL,
     transaction_reference character varying(255),
+    refund_method character varying(20) DEFAULT 'gateway'::character varying NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     snap_token text
 );
+
+ALTER TABLE ONLY public.payment
+    ADD CONSTRAINT payment_refund_method_check
+    CHECK (((refund_method)::text = ANY ((ARRAY['gateway'::character varying, 'manual'::character varying])::text[])));
 
 
 --
@@ -337,6 +343,7 @@ CREATE TABLE public.reservation (
     additional_service_id integer,
     additional_service_price numeric(10,2),
     reservation_status public.res_status DEFAULT 'active'::public.res_status NOT NULL,
+    admin_cancelled_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT check_reservation_service_additional_price CHECK ((additional_service_price >= (0)::numeric)),
@@ -385,10 +392,12 @@ CREATE TABLE public.service (
     service_name character varying(255) NOT NULL,
     description text,
     price numeric(10,2) NOT NULL,
+    duration_minutes integer DEFAULT 30 NOT NULL,
     status public.service_status DEFAULT 'active'::public.service_status NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     category character varying(20) DEFAULT 'regular'::character varying NOT NULL,
+    CONSTRAINT check_service_duration_minutes CHECK (((duration_minutes >= 15) AND (duration_minutes <= 240))),
     CONSTRAINT service_category_check CHECK (((category)::text = ANY (ARRAY[('premium'::character varying)::text, ('regular'::character varying)::text])))
 );
 
