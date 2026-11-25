@@ -6,8 +6,8 @@ declare(strict_types=1);
 | Booking configuration
 |--------------------------------------------------------------------------
 |
-| Each booking is a one-hour time block. Admins can lower the capacity
-| for each clock hour to match the number of barbers on duty.
+| Each clock hour has a maximum capacity of 3 bookings.
+| Each one-hour slot uses this capacity.
 |
 */
 
@@ -53,11 +53,11 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
         SELECT
             CAST(:slot_date AS date),
             times.start_time::time,
-            (times.start_time + INTERVAL '60 minutes')::time
+            (times.start_time + INTERVAL '1 hour')::time
         FROM generate_series(
             TIMESTAMP '2000-01-01 10:00:00',
             TIMESTAMP '2000-01-01 21:00:00',
-            INTERVAL '60 minutes'
+            INTERVAL '1 hour'
         ) AS times(start_time)
         ON CONFLICT (slot_date, start_time, end_time)
         DO NOTHING"
@@ -100,7 +100,7 @@ function expireBookingHolds(PDO $pdo): int
 | Lock a date and clock hour
 |--------------------------------------------------------------------------
 |
-| Each hour uses one lock, so simultaneous requests cannot exceed its capacity.
+| Requests for a clock hour use the same lock.
 | This prevents simultaneous requests from exceeding hourly capacity.
 |
 | IMPORTANT:
@@ -230,8 +230,7 @@ function isBookableHourlySlot(array $slot): bool
 | 1. Active permanent reservations.
 | 2. Active temporary holds that have not expired.
 |
-| All reservations and active holds that start within that clock hour share
-| the hour's capacity, including any legacy half-hour slots already booked.
+| All booking records in the clock hour count toward the slot capacity.
 |
 */
 

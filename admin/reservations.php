@@ -144,7 +144,7 @@ $chartMaxHeight = 155;
 $chartStep = $chartWidth / max(1, count($chartItems));
 $chartBarWidth = min(22, $chartStep * 0.62);
 $adminPageTitle = 'Pemasukan & Reservasi | Pemon Admin';
-$adminPageScript = null;
+$adminPageScript = '../assets/js/admin-reservations.js';
 ?>
 <?php require __DIR__ . '/includes/header.php'; ?>
 

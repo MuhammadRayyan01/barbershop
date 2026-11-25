@@ -82,6 +82,7 @@ if (!function_exists('completeConfirmedMidtransRefund')) {
                     p.amount,
                     p.refund_key,
                     p.refund_status,
+                    p.refund_method,
                     p.payment_status::text AS payment_status
                 FROM payment p
                 INNER JOIN reservation r
@@ -112,6 +113,7 @@ if (!function_exists('completeConfirmedMidtransRefund')) {
             if (
                 $payment['payment_status'] !== 'paid' ||
                 $payment['refund_status'] !== 'pending' ||
+                $payment['refund_method'] !== 'gateway' ||
                 !is_string($refundKey) ||
                 $refundKey === ''
             ) {
@@ -186,6 +188,7 @@ if (!function_exists('completeConfirmedMidtransRefund')) {
                 WHERE payment_id = :payment_id
                   AND payment_status = 'paid'
                   AND refund_status = 'pending'
+                  AND refund_method = 'gateway'
             ");
 
             $stmt->execute([':payment_id' => $payment['payment_id']]);
@@ -240,6 +243,7 @@ if (!function_exists('reconcilePendingRefundsForCustomer')) {
                 WHERE r.user_id = :user_id
                   AND p.payment_status = 'paid'
                   AND p.refund_status = 'pending'
+                  AND p.refund_method = 'gateway'
                   AND p.transaction_reference IS NOT NULL
                 ORDER BY p.refund_requested_at ASC
                 LIMIT " . max(1, $limit) . "
@@ -298,6 +302,8 @@ if (!function_exists('submitPendingMidtransRefund')) {
 
         $stmt = $pdo->prepare("
             SELECT p.payment_id, p.amount, p.refund_status, p.refund_key,
+                   p.refund_reason,
+                   p.refund_method,
                    p.payment_status::text AS payment_status,
                    p.transaction_reference
             FROM payment p
@@ -311,7 +317,20 @@ if (!function_exists('submitPendingMidtransRefund')) {
             return 'no_payment';
         }
 
-        if ($payment['refund_status'] !== 'pending') {
+        if (!midtransPaymentSupportsGatewayRefund($transaction['payment_type'] ?? null)) {
+            $stmt = $pdo->prepare("
+                UPDATE payment
+                SET refund_method = 'manual',
+                    updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
+                WHERE payment_id = :payment_id
+                  AND payment_status = 'paid'
+                  AND refund_status = 'pending'
+            ");
+            $stmt->execute([':payment_id' => $payment['payment_id']]);
+            return 'manual_required';
+        }
+
+        if ($payment['refund_status'] !== 'pending' || $payment['refund_method'] !== 'gateway') {
             return 'no_pending_refund';
         }
 
@@ -348,7 +367,7 @@ if (!function_exists('submitPendingMidtransRefund')) {
         $response = midtransRequestRefund($identifier, [
             'refund_key' => $refundKey,
             'amount' => $amount,
-            'reason' => 'Customer cancellation within seven-minute period'
+            'reason' => $payment['refund_reason'] ?: 'Customer cancellation within seven-minute period'
         ]);
 
         $statusCode = (string) ($response['status_code'] ?? '');
@@ -361,6 +380,7 @@ if (!function_exists('submitPendingMidtransRefund')) {
                   AND refund_key = :refund_key
                   AND payment_status = 'paid'
                   AND refund_status = 'pending'
+                  AND refund_method = 'gateway'
             ");
             $stmt->execute([
                 ':payment_id' => $payment['payment_id'],
@@ -392,7 +412,8 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
     function savePendingMidtransRefundIntent(
         PDO $pdo,
         int $reservationId,
-        int $userId
+        int $userId,
+        bool $cancelledByAdmin = false
     ): string {
         try {
             $pdo->beginTransaction();
@@ -426,6 +447,7 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
                 $stmt = $pdo->prepare("
                     UPDATE payment
                     SET refund_status = 'pending',
+                        refund_method = 'gateway',
                         refund_key = :refund_key,
                         refund_reason = :reason,
                         refund_requested_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta',
@@ -436,7 +458,9 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
                 ");
                 $stmt->execute([
                     ':refund_key' => $refundKey,
-                    ':reason' => 'Customer cancellation within seven-minute period',
+                    ':reason' => $cancelledByAdmin
+                        ? 'Reservation cancelled by barbershop'
+                        : 'Customer cancellation within seven-minute period',
                     ':payment_id' => $payment['payment_id']
                 ]);
                 if ($stmt->rowCount() !== 1) {
@@ -449,13 +473,18 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
             $stmt = $pdo->prepare("
                 UPDATE reservation
                 SET reservation_status = 'inactive',
+                    admin_cancelled_at = CASE
+                        WHEN :cancelled_by_admin THEN COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
+                        ELSE admin_cancelled_at
+                    END,
                     updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
                 WHERE reservation_id = :reservation_id
                   AND user_id = :user_id
             ");
             $stmt->execute([
                 ':reservation_id' => $reservationId,
-                ':user_id' => $userId
+                ':user_id' => $userId,
+                ':cancelled_by_admin' => $cancelledByAdmin
             ]);
 
             $pdo->commit();

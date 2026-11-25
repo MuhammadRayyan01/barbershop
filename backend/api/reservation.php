@@ -30,6 +30,7 @@ if ($method === 'GET') {
             SELECT
                 r.reservation_id,
                 r.reservation_status,
+                r.admin_cancelled_at,
                 r.service_price,
                 r.additional_service_price,
                 r.created_at,
@@ -46,6 +47,7 @@ if ($method === 'GET') {
                 i.cancellation_deadline,
                 p.payment_status::text AS payment_status,
                 p.refund_status,
+                p.refund_method,
                 CASE
                     WHEN
                         r.reservation_status = 'active'

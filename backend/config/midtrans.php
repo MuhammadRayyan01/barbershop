@@ -246,6 +246,24 @@ function midtransGetTransactionStatus(string $orderId): array
     );
 }
 
+// Midtrans only supports gateway refunds for a subset of payment methods.
+// Unknown or newly added methods must use the merchant's manual refund flow.
+function midtransPaymentSupportsGatewayRefund(mixed $paymentType): bool
+{
+    if (!is_string($paymentType)) {
+        return false;
+    }
+
+    return in_array(strtolower(trim($paymentType)), [
+        'credit_card',
+        'gopay',
+        'qris',
+        'shopeepay',
+        'akulaku',
+        'kredivo'
+    ], true);
+}
+
 // Request a refund from Midtrans.
 
 

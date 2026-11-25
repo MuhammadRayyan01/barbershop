@@ -22,7 +22,7 @@ if ($requestMethod === 'POST') {
     $reservationId = filter_var($_POST['reservation_id'] ?? null, FILTER_VALIDATE_INT);
     $action = $_POST['action'] ?? '';
     try {
-        if (!$reservationId || $reservationId < 1 || !in_array($action, ['mark_paid', 'cancel'], true)) {
+        if (!$reservationId || $reservationId < 1 || $action !== 'mark_paid') {
             throw new InvalidArgumentException('Aksi reservasi tidak valid.');
         }
         $pdo->beginTransaction();
@@ -31,19 +31,13 @@ if ($requestMethod === 'POST') {
         $status = $stmt->fetchColumn();
         if ($status !== 'active') throw new InvalidArgumentException('Reservasi aktif tidak ditemukan.');
 
-        if ($action === 'cancel') {
-            $stmt = $pdo->prepare("UPDATE reservation SET reservation_status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE reservation_id = :id");
-            $stmt->execute(['id' => $reservationId]);
-            $_SESSION['admin_flash'] = 'Reservasi dibatalkan.';
-        } else {
-            $stmt = $pdo->prepare('SELECT total_payment FROM invoice WHERE reservation_id = :id');
-            $stmt->execute(['id' => $reservationId]);
-            $amount = $stmt->fetchColumn();
-            if ($amount === false) throw new InvalidArgumentException('Invoice reservasi tidak ditemukan.');
-            $stmt = $pdo->prepare("INSERT INTO payment (reservation_id, payment_type, payment_status, amount) VALUES (:id, 'cash', 'paid', :amount) ON CONFLICT (reservation_id) DO UPDATE SET payment_type = 'cash', payment_status = 'paid', amount = EXCLUDED.amount, updated_at = CURRENT_TIMESTAMP");
-            $stmt->execute(['id' => $reservationId, 'amount' => $amount]);
-            $_SESSION['admin_flash'] = 'Pembayaran tunai dicatat.';
-        }
+        $stmt = $pdo->prepare('SELECT total_payment FROM invoice WHERE reservation_id = :id');
+        $stmt->execute(['id' => $reservationId]);
+        $amount = $stmt->fetchColumn();
+        if ($amount === false) throw new InvalidArgumentException('Invoice reservasi tidak ditemukan.');
+        $stmt = $pdo->prepare("INSERT INTO payment (reservation_id, payment_type, payment_status, amount) VALUES (:id, 'cash', 'paid', :amount) ON CONFLICT (reservation_id) DO UPDATE SET payment_type = 'cash', payment_status = 'paid', amount = EXCLUDED.amount, updated_at = CURRENT_TIMESTAMP");
+        $stmt->execute(['id' => $reservationId, 'amount' => $amount]);
+        $_SESSION['admin_flash'] = 'Pembayaran tunai dicatat.';
         $pdo->commit();
         header('Location: dashboard.php?' . http_build_query(['date' => $date, 'q' => $query]));
         exit;

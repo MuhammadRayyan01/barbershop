@@ -49,7 +49,6 @@ try {
             GROUP BY slot_date, start_time
         ), hour_settings AS (
             SELECT slot_date, EXTRACT(HOUR FROM start_time)::integer AS hour_num,
-                   MIN(booking_capacity)::integer AS capacity,
                    BOOL_AND(is_available::text = 'available') AS is_available
             FROM time_slot
             WHERE slot_date >= CAST(:settings_start AS date)
@@ -77,7 +76,7 @@ try {
         )
         SELECT hs.slot_id, hs.slot_date, hs.start_time, hs.end_time,
                CASE WHEN cfg.is_available THEN 'available' ELSE 'not available' END AS is_available,
-               cfg.capacity,
+               CAST(:slot_capacity AS integer) AS capacity,
                (COALESCE(rc.booked_count, 0) + COALESCE(hc.held_count, 0))::integer AS booked_count
         FROM hourly_slots hs
         INNER JOIN hour_settings cfg
@@ -99,6 +98,7 @@ try {
         'reservation_end' => $monthEnd->format('Y-m-d'),
         'hold_start' => $monthStart->format('Y-m-d'),
         'hold_end' => $monthEnd->format('Y-m-d'),
+        'slot_capacity' => BOOKING_SLOT_CAPACITY,
     ]);
 
     $now = new DateTimeImmutable('now', $timezone);
