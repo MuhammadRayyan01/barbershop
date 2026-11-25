@@ -287,6 +287,7 @@ try {
         $paymentCancel = $pdo->prepare("
             UPDATE payment
             SET payment_status = 'cancelled',
+                admin_cancel_outcome = 'no_payment',
                 updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
             WHERE payment_id = :payment_id
               AND payment_status IN ('pending', 'verification pending', 'failed')
@@ -498,7 +499,7 @@ if (
 }
 
 // Finalize a card cancellation after Midtrans confirms it.
-$finalizeCardCancellation = static function () use (
+$finalizeCardCancellation = static function (?string $adminCancelOutcome = null) use (
     $pdo,
     $booking,
     $reservationId,
@@ -513,7 +514,8 @@ $finalizeCardCancellation = static function () use (
                 r.reservation_status,
                 r.admin_cancelled_at,
                 p.payment_status::text AS payment_status,
-                p.refund_status
+                p.refund_status,
+                p.admin_cancel_outcome
             FROM reservation r
             INNER JOIN payment p
                 ON p.reservation_id = r.reservation_id
@@ -535,6 +537,16 @@ $finalizeCardCancellation = static function () use (
             );
         }
 
+        if ($isAdmin && $adminCancelOutcome === null) {
+            $adminCancelOutcome = match ($current['payment_status']) {
+                'paid' => 'capture_voided',
+                'pending', 'verification pending' => 'pending_cancelled',
+                'failed' => 'no_payment',
+                'cancelled' => $booking['payment_status'] === 'paid' ? 'capture_voided' : null,
+                default => null,
+            };
+        }
+
         // Already finalized.
         if (
             $current['reservation_status'] === 'inactive' &&
@@ -548,6 +560,10 @@ $finalizeCardCancellation = static function () use (
                     WHERE reservation_id = :reservation_id
                 ")->execute([':reservation_id' => $reservationId]);
             }
+            if ($isAdmin && $current['admin_cancel_outcome'] === null && $adminCancelOutcome !== null) {
+                $pdo->prepare("UPDATE payment SET admin_cancel_outcome = :outcome WHERE reservation_id = :reservation_id")
+                    ->execute([':outcome' => $adminCancelOutcome, ':reservation_id' => $reservationId]);
+            }
             $pdo->commit();
             return;
         }
@@ -556,7 +572,7 @@ $finalizeCardCancellation = static function () use (
         // intent, because a cancelled transaction is not a refund.
         if (
             (!$isAdmin && $current['payment_status'] !== 'paid') ||
-            ($isAdmin && !in_array($current['payment_status'], ['paid', 'pending', 'verification pending', 'failed'], true)) ||
+            ($isAdmin && !in_array($current['payment_status'], ['paid', 'pending', 'verification pending', 'failed', 'cancelled'], true)) ||
             !in_array(
                 $current['refund_status'],
                 ['not_requested', 'pending'],
@@ -569,12 +585,16 @@ $finalizeCardCancellation = static function () use (
         }
 
         $paymentStatusCondition = $isAdmin
-            ? "payment_status IN ('paid', 'pending', 'verification pending', 'failed')"
+            ? "payment_status IN ('paid', 'pending', 'verification pending', 'failed', 'cancelled')"
             : "payment_status = 'paid'";
         $stmt = $pdo->prepare("
             UPDATE payment
             SET
                 payment_status = 'cancelled',
+                admin_cancel_outcome = CASE
+                    WHEN :is_admin THEN :admin_cancel_outcome
+                    ELSE admin_cancel_outcome
+                END,
                 refund_status = 'not_requested',
                 refund_key = NULL,
                 refund_reason = NULL,
@@ -587,7 +607,9 @@ $finalizeCardCancellation = static function () use (
         ");
 
         $stmt->execute([
-            ':payment_id' => $booking['payment_id']
+            ':payment_id' => $booking['payment_id'],
+            ':is_admin' => $isAdmin,
+            ':admin_cancel_outcome' => $adminCancelOutcome
         ]);
 
         if ($stmt->rowCount() !== 1) {
@@ -627,13 +649,18 @@ $finalizeCardCancellation = static function () use (
 // Handle a transaction that Midtrans has already cancelled.
 if ($transactionStatus === 'cancel') {
     try {
-        $finalizeCardCancellation();
+        $adminCancelOutcome = $isAdmin && $booking['payment_status'] === 'paid'
+            ? 'capture_voided'
+            : null;
+        $finalizeCardCancellation($adminCancelOutcome);
 
         jsonResponse(200, [
             'success' => true,
             'payment_status' => 'cancelled',
             'refund_status' => 'not_requested',
-            'message' => 'Your card payment and reservation have been cancelled successfully.'
+            'message' => $adminCancelOutcome === 'capture_voided'
+                ? 'Midtrans cancelled the successful card capture before settlement. The card limit should return automatically, usually within one business day.'
+                : 'Midtrans confirmed the transaction was cancelled before settlement. No refund request was submitted.'
         ]);
 
     } catch (Throwable $e) {
@@ -650,6 +677,12 @@ if ($transactionStatus === 'cancel') {
 
 // Pending and authorized Midtrans payments can be cancelled, but not refunded.
 if ($isAdmin && in_array($transactionStatus, ['pending', 'authorize'], true)) {
+    $adminCancelOutcome = $transactionStatus === 'authorize'
+        ? 'authorization_voided'
+        : 'pending_cancelled';
+    $adminCancelMessage = $transactionStatus === 'authorize'
+        ? 'The card authorization was voided through Midtrans. The card issuer will release the held amount; no refund request is needed.'
+        : 'The pending transaction was cancelled through Midtrans before payment completed. No refund is needed.';
     try {
         $cancelResponse = midtransCancelTransaction($orderId);
         $cancelOrderId = $cancelResponse['order_id'] ?? null;
@@ -662,12 +695,12 @@ if ($isAdmin && in_array($transactionStatus, ['pending', 'authorize'], true)) {
         ) {
             throw new RuntimeException('Midtrans cancellation response could not be verified.');
         }
-        $finalizeCardCancellation();
+        $finalizeCardCancellation($adminCancelOutcome);
         jsonResponse(200, [
             'success' => true,
             'payment_status' => 'cancelled',
             'refund_status' => 'not_requested',
-            'message' => 'Reservation cancelled through Midtrans. No refund is needed because the payment was not settled.'
+            'message' => $adminCancelMessage
         ]);
     } catch (Throwable $e) {
         error_log('Admin Midtrans pending cancellation error: ' . $e->getMessage());
@@ -684,12 +717,12 @@ if ($isAdmin && in_array($transactionStatus, ['pending', 'authorize'], true)) {
             }
             $latestStatus = $latestTransaction['transaction_status'] ?? '';
             if ($latestStatus === 'cancel') {
-                $finalizeCardCancellation();
+                $finalizeCardCancellation($adminCancelOutcome);
                 jsonResponse(200, [
                     'success' => true,
                     'payment_status' => 'cancelled',
                     'refund_status' => 'not_requested',
-                    'message' => 'Reservation cancelled through Midtrans. No refund is needed because the payment was not settled.'
+                    'message' => $adminCancelMessage
                 ]);
             }
             if (in_array($latestStatus, ['settlement', 'capture'], true)) {
@@ -714,7 +747,7 @@ if ($isAdmin && in_array($transactionStatus, ['pending', 'authorize'], true)) {
 
 if ($isAdmin && in_array($transactionStatus, ['expire', 'deny', 'failure'], true)) {
     try {
-        $finalizeCardCancellation();
+        $finalizeCardCancellation('no_payment');
         jsonResponse(200, [
             'success' => true,
             'payment_status' => 'cancelled',
@@ -758,7 +791,7 @@ if ($transactionStatus === 'capture') {
             throw new RuntimeException('Midtrans cancellation response could not be verified.');
         }
 
-        $finalizeCardCancellation();
+        $finalizeCardCancellation('capture_voided');
         jsonResponse(200, [
             'success' => true,
             'payment_status' => 'cancelled',
@@ -784,7 +817,7 @@ if ($transactionStatus === 'capture') {
             $latestStatus = $latestTransaction['transaction_status'] ?? '';
 
             if ($latestStatus === 'cancel') {
-                $finalizeCardCancellation();
+                $finalizeCardCancellation('capture_voided');
                 jsonResponse(200, [
                     'success' => true,
                     'payment_status' => 'cancelled',
@@ -816,7 +849,7 @@ if ($transactionStatus === 'capture') {
 
                 $latestStatus = $latestTransaction['transaction_status'] ?? '';
                 if ($latestStatus === 'cancel') {
-                    $finalizeCardCancellation();
+                    $finalizeCardCancellation('capture_voided');
                     jsonResponse(200, [
                         'success' => true,
                         'payment_status' => 'cancelled',
