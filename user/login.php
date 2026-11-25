@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../backend/config/session.php';
 
+$loginDestination = ($_GET['next'] ?? '') === 'booking'
+    ? 'booking/booking.php'
+    : 'dashboard/index.php';
+
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard/index.php');
+    header('Location: ' . $loginDestination);
     exit;
 }
 
