@@ -81,51 +81,8 @@ try {
         ensureTimeSlotsForDate($pdo, $date);
     }
 
-    $stmt = $pdo->prepare("WITH slot_hours AS (
-        SELECT
-            ts.slot_date,
-            EXTRACT(HOUR FROM ts.start_time)::integer AS hour_num,
-            MIN(ts.slot_id)::integer AS slot_id,
-            MIN(ts.booking_capacity)::integer AS booking_capacity,
-            BOOL_AND(ts.is_available::text = 'available') AS is_available
-        FROM time_slot ts
-        WHERE ts.slot_date = CAST(:date_hours AS date)
-        GROUP BY ts.slot_date, EXTRACT(HOUR FROM ts.start_time)
-    ), reservation_counts AS (
-        SELECT ts.slot_date, EXTRACT(HOUR FROM ts.start_time)::integer AS hour_num,
-               COUNT(*)::integer AS booked_count
-        FROM reservation r
-        INNER JOIN time_slot ts ON ts.slot_id = r.slot_id
-        WHERE r.reservation_status = 'active'
-          AND ts.slot_date = CAST(:date_reservations AS date)
-        GROUP BY ts.slot_date, EXTRACT(HOUR FROM ts.start_time)
-    ), hold_counts AS (
-        SELECT ts.slot_date, EXTRACT(HOUR FROM ts.start_time)::integer AS hour_num,
-               COUNT(*)::integer AS held_count
-        FROM booking_hold bh
-        INNER JOIN time_slot ts ON ts.slot_id = bh.slot_id
-        WHERE bh.hold_status = 'active'
-          AND bh.expires_at > CURRENT_TIMESTAMP
-          AND ts.slot_date = CAST(:date_holds AS date)
-        GROUP BY ts.slot_date, EXTRACT(HOUR FROM ts.start_time)
-    )
-    SELECT
-        sh.slot_id,
-        sh.slot_date,
-        make_time(sh.hour_num, 0, 0) AS start_time,
-        make_time(sh.hour_num + 1, 0, 0) AS end_time,
-        sh.booking_capacity,
-        sh.is_available,
-        (COALESCE(rc.booked_count, 0) + COALESCE(hc.held_count, 0))::integer AS booked_count
-    FROM slot_hours sh
-    LEFT JOIN reservation_counts rc ON rc.slot_date = sh.slot_date AND rc.hour_num = sh.hour_num
-    LEFT JOIN hold_counts hc ON hc.slot_date = sh.slot_date AND hc.hour_num = sh.hour_num
-    ORDER BY sh.hour_num");
-    $stmt->execute([
-        'date_hours' => $date,
-        'date_reservations' => $date,
-        'date_holds' => $date,
-    ]);
+    $stmt = $pdo->prepare("SELECT ts.slot_id, ts.slot_date, ts.start_time, ts.end_time, ts.is_available, COUNT(r.reservation_id) FILTER (WHERE r.reservation_status = 'active') AS booked_count FROM time_slot ts LEFT JOIN reservation r ON r.slot_id = ts.slot_id WHERE ts.slot_date = CAST(:date AS date) GROUP BY ts.slot_id ORDER BY ts.start_time");
+    $stmt->execute(['date' => $date]);
     $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log('Admin slot list error: ' . $e->getMessage());
@@ -143,7 +100,7 @@ $adminPageScript = '../assets/js/admin-slots.js';
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl sm:text-3xl font-extrabold">Date Time Slot</h1>
-        <p class="text-sm text-slate-500 mt-1">Atur kapasitas barber untuk slot 1 jam yang dibuat otomatis dari pukul 10.00 hingga 22.00.</p>
+        <p class="text-sm text-slate-500 mt-1">Slot 30 menit dari pukul 10.00 hingga 22.00 dibuat otomatis untuk tanggal yang dipilih.</p>
       </div>
       <form method="get" action="time-slots.php" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm text-sm font-semibold">
         <span class="material-symbols-outlined text-slate-500">calendar_month</span><label for="slot-date">Tanggal</label>
