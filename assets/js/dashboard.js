@@ -540,11 +540,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                 }
             );
+            const adminCancelledReservations = reservations.filter(
+                (reservation) => Boolean(reservation.admin_cancelled_at)
+            );
+            const dashboardReservations = [
+                ...adminCancelledReservations,
+                ...upcomingReservations.filter((reservation) => !reservation.admin_cancelled_at)
+            ];
 
             const pendingPayments = reservations.filter(
                 (reservation) => {
 
-                    return reservation.payment_status === 'pending';
+                    return reservation.reservation_status === 'active' &&
+                        reservation.payment_status === 'pending';
                 }
             );
 
@@ -564,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             reservationContainer.replaceChildren();
 
-            if (upcomingReservations.length === 0) {
+            if (dashboardReservations.length === 0) {
 
                 const emptyMessage = document.createElement('p');
 
@@ -578,12 +586,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            upcomingReservations.forEach((reservation) => {
+            dashboardReservations.forEach((reservation) => {
+                const adminCancelled = Boolean(reservation.admin_cancelled_at);
 
                 const card = document.createElement('article');
 
-                card.className =
-                    'rounded-xl border border-gray-100 p-4 sm:p-5';
+                card.className = adminCancelled
+                    ? 'rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5'
+                    : 'rounded-xl border border-gray-100 p-4 sm:p-5';
 
                 const layout = document.createElement('div');
 
@@ -659,6 +669,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     status
                 );
 
+                if (adminCancelled) {
+                    const notice = document.createElement('p');
+                    notice.className = 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900';
+                    if (reservation.refund_status === 'completed' || reservation.payment_status === 'refunded') {
+                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Dana telah dikembalikan.';
+                    } else if (reservation.refund_status === 'pending' && reservation.refund_method === 'manual') {
+                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Pengembalian dana sedang diproses langsung oleh barbershop.';
+                    } else if (reservation.refund_status === 'pending') {
+                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Pengembalian dana sedang diproses melalui Midtrans.';
+                    } else if (reservation.payment_status === 'cancelled' || reservation.payment_status === 'failed' || reservation.payment_status === 'pending') {
+                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Tidak ada pembayaran yang berhasil, jadi tidak ada dana yang perlu dikembalikan.';
+                    } else {
+                        notice.textContent = 'Reservasi ini dibatalkan oleh admin. Barbershop akan memproses pengembalian dana.';
+                    }
+                    details.appendChild(notice);
+                }
+
                 const timerPanel = document.createElement('div');
 
                 timerPanel.className =
@@ -687,7 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     timerLabel
                 );
 
-                const hasPaidDeadline =
+                const hasPaidDeadline = !adminCancelled &&
                     reservation.payment_status === 'paid' &&
                     reservation.cancellation_deadline;
 
@@ -706,7 +733,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     timerLabel.textContent = 'Tidak tersedia';
                 }
 
-                layout.append(details, timerPanel);
+                if (adminCancelled) {
+                    layout.append(details);
+                } else {
+                    layout.append(details, timerPanel);
+                }
 
                 card.appendChild(layout);
 
@@ -736,7 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     card.appendChild(refundStatus);
                 }
 
-                if (canCancelReservation(reservation.can_cancel)) {
+                if (!adminCancelled && canCancelReservation(reservation.can_cancel)) {
 
                     const cancelButton = document.createElement('button');
 
@@ -757,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     card.appendChild(cancelButton);
 
-                } else if (canCancelReservation(reservation.can_retry_refund)) {
+                } else if (!adminCancelled && canCancelReservation(reservation.can_retry_refund)) {
 
                     // The refund was requested but is not confirmed yet. Checking
                     // again is safe: the backend reuses the stored refund key.
