@@ -302,6 +302,7 @@ if (!function_exists('submitPendingMidtransRefund')) {
 
         $stmt = $pdo->prepare("
             SELECT p.payment_id, p.amount, p.refund_status, p.refund_key,
+                   p.refund_reason,
                    p.refund_method,
                    p.payment_status::text AS payment_status,
                    p.transaction_reference
@@ -366,7 +367,7 @@ if (!function_exists('submitPendingMidtransRefund')) {
         $response = midtransRequestRefund($identifier, [
             'refund_key' => $refundKey,
             'amount' => $amount,
-            'reason' => 'Customer cancellation within seven-minute period'
+            'reason' => $payment['refund_reason'] ?: 'Customer cancellation within seven-minute period'
         ]);
 
         $statusCode = (string) ($response['status_code'] ?? '');
@@ -411,7 +412,8 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
     function savePendingMidtransRefundIntent(
         PDO $pdo,
         int $reservationId,
-        int $userId
+        int $userId,
+        bool $cancelledByAdmin = false
     ): string {
         try {
             $pdo->beginTransaction();
@@ -456,7 +458,9 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
                 ");
                 $stmt->execute([
                     ':refund_key' => $refundKey,
-                    ':reason' => 'Customer cancellation within seven-minute period',
+                    ':reason' => $cancelledByAdmin
+                        ? 'Reservation cancelled by barbershop'
+                        : 'Customer cancellation within seven-minute period',
                     ':payment_id' => $payment['payment_id']
                 ]);
                 if ($stmt->rowCount() !== 1) {
@@ -469,13 +473,18 @@ if (!function_exists('savePendingMidtransRefundIntent')) {
             $stmt = $pdo->prepare("
                 UPDATE reservation
                 SET reservation_status = 'inactive',
+                    admin_cancelled_at = CASE
+                        WHEN :cancelled_by_admin THEN COALESCE(admin_cancelled_at, clock_timestamp() AT TIME ZONE 'Asia/Jakarta')
+                        ELSE admin_cancelled_at
+                    END,
                     updated_at = clock_timestamp() AT TIME ZONE 'Asia/Jakarta'
                 WHERE reservation_id = :reservation_id
                   AND user_id = :user_id
             ");
             $stmt->execute([
                 ':reservation_id' => $reservationId,
-                ':user_id' => $userId
+                ':user_id' => $userId,
+                ':cancelled_by_admin' => $cancelledByAdmin
             ]);
 
             $pdo->commit();

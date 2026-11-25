@@ -30,6 +30,7 @@ if ($method === 'GET') {
             SELECT
                 r.reservation_id,
                 r.reservation_status,
+                r.admin_cancelled_at,
                 r.service_price,
                 r.additional_service_price,
                 r.created_at,

@@ -27,9 +27,11 @@ create table if not exists service(
         service_name varchar(255) not null,
         description text,
         price decimal (10, 2) not null,
+        duration_minutes int not null default 30,
         status service_status default 'active'  not null,
         created_at timestamp default current_timestamp not null,
-        updated_at timestamp default current_timestamp not null
+        updated_at timestamp default current_timestamp not null,
+        constraint check_service_duration_minutes check(duration_minutes between 15 and 240)
 );
 
 create table if not exists additional_service (
@@ -64,6 +66,7 @@ create table if not exists reservation(
         additional_service_id int,
         additional_service_price decimal(10, 2),
         reservation_status res_status default 'active' not null,
+        admin_cancelled_at timestamp,
         created_at timestamp default current_timestamp not null,
         updated_at timestamp default current_timestamp not null,
 
@@ -93,7 +96,7 @@ create table if not exists reservation_additional_services(
         constraint check_ras_price check (price >= 0)
 );
 
-create type pay_status as enum('pending','paid','verification pending','failed','refunded');
+create type pay_status as enum('pending','paid','verification pending','failed','refunded','cancelled');
 create table if not exists payment(
         payment_id serial primary key,
         reservation_id int unique not null,
@@ -102,6 +105,7 @@ create table if not exists payment(
         amount decimal(10, 2) not null,
         payment_proof_url varchar(255),
         transaction_reference varchar(255),
+        refund_method varchar(20) not null default 'gateway' check (refund_method in ('gateway', 'manual')),
         snap_token varchar(255),
         created_at timestamp default current_timestamp not null,
         updated_at timestamp default current_timestamp not null,
