@@ -300,6 +300,7 @@ CREATE TABLE public.payment (
     amount numeric(10,2) NOT NULL,
     transaction_reference character varying(255),
     refund_method character varying(20) DEFAULT 'gateway'::character varying NOT NULL,
+    admin_cancel_outcome character varying(32),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     snap_token text
@@ -308,6 +309,10 @@ CREATE TABLE public.payment (
 ALTER TABLE ONLY public.payment
     ADD CONSTRAINT payment_refund_method_check
     CHECK (((refund_method)::text = ANY ((ARRAY['gateway'::character varying, 'manual'::character varying])::text[])));
+
+ALTER TABLE ONLY public.payment
+    ADD CONSTRAINT payment_admin_cancel_outcome_check
+    CHECK ((admin_cancel_outcome IS NULL OR (admin_cancel_outcome)::text = ANY ((ARRAY['no_payment'::character varying, 'pending_cancelled'::character varying, 'authorization_voided'::character varying, 'capture_voided'::character varying])::text[])));
 
 
 --
