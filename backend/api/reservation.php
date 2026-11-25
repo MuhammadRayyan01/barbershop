@@ -50,6 +50,10 @@ if ($method === 'GET') {
                 p.admin_cancel_outcome,
                 p.refund_status,
                 p.refund_method,
+                latest_schedule_change.changed_at AS schedule_changed_at,
+                latest_schedule_change.reason AS schedule_change_reason,
+                latest_schedule_change.old_slot_date,
+                latest_schedule_change.old_start_time,
                 CASE
                     WHEN
                         r.reservation_status = 'active'
@@ -79,6 +83,16 @@ if ($method === 'GET') {
                 ON i.reservation_id = r.reservation_id
             LEFT JOIN payment p
                 ON p.reservation_id = r.reservation_id
+            LEFT JOIN LATERAL (
+                SELECT change.created_at AS changed_at, change.reason,
+                       old_slot.slot_date::text AS old_slot_date,
+                       TO_CHAR(old_slot.start_time, 'HH24:MI') AS old_start_time
+                FROM reservation_schedule_change change
+                JOIN time_slot old_slot ON old_slot.slot_id = change.old_slot_id
+                WHERE change.reservation_id = r.reservation_id
+                ORDER BY change.created_at DESC, change.schedule_change_id DESC
+                LIMIT 1
+            ) latest_schedule_change ON TRUE
             WHERE r.user_id = :user_id
             ORDER BY ts.slot_date DESC, ts.start_time DESC
         ");

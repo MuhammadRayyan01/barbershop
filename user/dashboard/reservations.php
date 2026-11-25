@@ -29,19 +29,36 @@ try {
     $stmt = $pdo->prepare("SELECT
             r.reservation_id,
             r.reservation_status::text AS reservation_status,
+            r.admin_cancelled_at,
             s.service_name,
             r.service_price,
             r.additional_service_price,
             ts.slot_date::text AS slot_date,
             TO_CHAR(ts.start_time, 'HH24:MI') AS start_time,
             TO_CHAR(ts.end_time, 'HH24:MI') AS end_time,
+            latest_schedule_change.created_at AS schedule_changed_at,
+            latest_schedule_change.reason AS schedule_change_reason,
+            latest_schedule_change.old_slot_date,
+            latest_schedule_change.old_start_time,
             i.total_payment,
-            p.payment_status::text AS payment_status
+            p.payment_status::text AS payment_status,
+            p.refund_status,
+            p.refund_method
         FROM reservation r
         INNER JOIN service s ON s.service_id = r.service_id
         INNER JOIN time_slot ts ON ts.slot_id = r.slot_id
         LEFT JOIN invoice i ON i.reservation_id = r.reservation_id
         LEFT JOIN payment p ON p.reservation_id = r.reservation_id
+        LEFT JOIN LATERAL (
+            SELECT change.created_at, change.reason,
+                   old_slot.slot_date::text AS old_slot_date,
+                   TO_CHAR(old_slot.start_time, 'HH24:MI') AS old_start_time
+            FROM reservation_schedule_change change
+            JOIN time_slot old_slot ON old_slot.slot_id = change.old_slot_id
+            WHERE change.reservation_id = r.reservation_id
+            ORDER BY change.created_at DESC, change.schedule_change_id DESC
+            LIMIT 1
+        ) latest_schedule_change ON TRUE
         WHERE $where
         ORDER BY ts.slot_date DESC, ts.start_time DESC, r.reservation_id DESC");
     $stmt->execute($params);
@@ -132,6 +149,11 @@ require_once __DIR__ . '/../../includes/header.php';
                     : ($reservationStatus === 'Selesai' ? 'bg-gray-100 text-gray-700' : 'bg-emerald-50 text-emerald-800');
                 $date = new DateTimeImmutable($reservation['slot_date'], $timezone);
                 $dateLabel = $date->format('d') . ' ' . $monthNames[(int) $date->format('n')] . ' ' . $date->format('Y');
+                $oldScheduleLabel = '';
+                if (!empty($reservation['old_slot_date']) && !empty($reservation['old_start_time'])) {
+                    $oldDate = new DateTimeImmutable($reservation['old_slot_date'], $timezone);
+                    $oldScheduleLabel = $oldDate->format('d') . ' ' . $monthNames[(int) $oldDate->format('n')] . ' ' . $oldDate->format('Y') . ' pukul ' . $reservation['old_start_time'];
+                }
                 $total = $reservation['total_payment']
                     ?? ((float) $reservation['service_price'] + (float) ($reservation['additional_service_price'] ?? 0));
             ?>
@@ -143,6 +165,14 @@ require_once __DIR__ . '/../../includes/header.php';
                     <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold <?= $paymentClass ?>"><?= $escape($paymentLabel) ?></span>
                   </div>
                   <p class="mt-2 text-sm text-gray-600"><?= $escape($dateLabel) ?> · <?= $escape($reservation['start_time']) ?>–<?= $escape($reservation['end_time']) ?> WIB</p>
+                  <?php if ($oldScheduleLabel !== ''): ?>
+                    <p class="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">Jadwal diubah oleh barbershop dari <?= $escape($oldScheduleLabel) ?>. Silakan gunakan jadwal terbaru di atas.<?= !empty($reservation['schedule_change_reason']) ? ' Alasan: ' . $escape($reservation['schedule_change_reason']) . '.' : '' ?></p>
+                  <?php endif; ?>
+                  <?php if (!empty($reservation['admin_cancelled_at'])): ?>
+                    <p class="mt-2 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                      <?php if ($paymentStatus === 'refunded' || $reservation['refund_status'] === 'completed'): ?>Refund selesai; dana telah dikembalikan.<?php elseif ($reservation['refund_status'] === 'pending' && $reservation['refund_method'] === 'manual'): ?>Reservasi dibatalkan oleh barbershop. Refund manual sedang diproses; barbershop akan mengembalikan dana.<?php elseif ($reservation['refund_status'] === 'pending'): ?>Reservasi dibatalkan oleh barbershop. Refund sedang diproses melalui penyedia pembayaran.<?php else: ?>Reservasi ini dibatalkan oleh barbershop.<?php endif; ?>
+                    </p>
+                  <?php endif; ?>
                   <p class="mt-1 text-xs text-gray-500">Kode booking: PMN-<?= (int) $reservation['reservation_id'] ?></p>
                 </div>
                 <div class="flex items-center justify-between gap-4 sm:justify-end">

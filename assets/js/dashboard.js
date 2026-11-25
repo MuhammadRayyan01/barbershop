@@ -730,6 +730,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     details.appendChild(notice);
                 }
 
+                if (!adminCancelled && reservation.schedule_changed_at) {
+                    const scheduleNotice = document.createElement('p');
+                    scheduleNotice.className = 'mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-900';
+                    const oldDate = reservation.old_slot_date && reservation.old_start_time
+                        ? ` dari ${formatReservationDate(reservation.old_slot_date, reservation.old_start_time)}`
+                        : '';
+                    const reason = reservation.schedule_change_reason
+                        ? ` Alasan: ${reservation.schedule_change_reason}.`
+                        : '';
+                    scheduleNotice.textContent = `Jadwal reservasi ini diubah oleh barbershop${oldDate}. Gunakan jadwal terbaru di atas.${reason}`;
+                    details.appendChild(scheduleNotice);
+                }
+
                 const timerPanel = document.createElement('div');
 
                 timerPanel.className =

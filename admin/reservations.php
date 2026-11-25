@@ -1,8 +1,11 @@
 <?php
 require_once __DIR__ . '/../backend/middleware/require_admin_page.php';
+require_once __DIR__ . '/../backend/config/csrf.php';
 
 $timezone = new DateTimeZone('Asia/Jakarta');
 $today = new DateTimeImmutable('today', $timezone);
+$now = new DateTimeImmutable('now', $timezone);
+$csrfToken = getCsrfToken();
 $range = $_GET['range'] ?? '30';
 $validRanges = ['day', '7', '30', '90', 'custom', 'all'];
 if (!in_array($range, $validRanges, true)) $range = '30';
@@ -51,6 +54,15 @@ $refundCount = 0;
 $refundAmount = 0.0;
 $netRevenue = 0.0;
 $popularServices = [];
+$operationPeriod = $_GET['ops_period'] ?? 'today';
+if (!in_array($operationPeriod, ['today', 'tomorrow', 'later'], true)) $operationPeriod = 'today';
+$operationPage = filter_var($_GET['ops_page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
+$operationPerPage = 25;
+$operationTotal = 0;
+$operationTotalPages = 1;
+$operationReservations = [];
+$operationCounts = ['today' => 0, 'tomorrow' => 0, 'later' => 0];
+$operationError = '';
 
 try {
     $rangeFilterSql = $range === 'all'
@@ -162,6 +174,72 @@ try {
     $pageError = 'Data pemasukan dan reservasi gagal dimuat.';
 }
 
+try {
+    $operationCountsStmt = $pdo->prepare("SELECT
+        COUNT(*) FILTER (WHERE ts.slot_date = CAST(:today AS date) AND ts.start_time > CAST(:current_time AS time))::integer AS today_count,
+        COUNT(*) FILTER (WHERE ts.slot_date = CAST(:tomorrow AS date))::integer AS tomorrow_count,
+        COUNT(*) FILTER (WHERE ts.slot_date > CAST(:tomorrow_later AS date))::integer AS later_count
+        FROM reservation r
+        JOIN time_slot ts ON ts.slot_id = r.slot_id
+        JOIN payment p ON p.reservation_id = r.reservation_id
+        WHERE r.reservation_status = 'active' AND p.payment_status = 'paid' AND p.refund_status = 'not_requested'
+          AND (ts.slot_date > CAST(:today_filter_a AS date)
+               OR (ts.slot_date = CAST(:today_filter_b AS date) AND ts.start_time > CAST(:current_time_filter AS time)))");
+    $operationCountsStmt->execute([
+        'today' => $today->format('Y-m-d'),
+        'current_time' => $now->format('H:i:s'),
+        'tomorrow' => $today->modify('+1 day')->format('Y-m-d'),
+        'tomorrow_later' => $today->modify('+1 day')->format('Y-m-d'),
+        'today_filter_a' => $today->format('Y-m-d'),
+        'today_filter_b' => $today->format('Y-m-d'),
+        'current_time_filter' => $now->format('H:i:s'),
+    ]);
+    $countRow = $operationCountsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $operationCounts = [
+        'today' => (int) ($countRow['today_count'] ?? 0),
+        'tomorrow' => (int) ($countRow['tomorrow_count'] ?? 0),
+        'later' => (int) ($countRow['later_count'] ?? 0),
+    ];
+
+    $operationWhere = match ($operationPeriod) {
+        'today' => 'ts.slot_date = CAST(:operation_start AS date) AND ts.start_time > CAST(:operation_time AS time)',
+        'tomorrow' => 'ts.slot_date = CAST(:operation_start AS date)',
+        default => 'ts.slot_date > CAST(:operation_start AS date)',
+    };
+    $operationStart = $operationPeriod === 'today'
+        ? $today->format('Y-m-d')
+        : ($operationPeriod === 'tomorrow' ? $today->modify('+1 day')->format('Y-m-d') : $today->modify('+1 day')->format('Y-m-d'));
+    $operationParams = ['operation_start' => $operationStart];
+    if ($operationPeriod === 'today') $operationParams['operation_time'] = $now->format('H:i:s');
+    $operationBase = "FROM reservation r
+        JOIN users u ON u.user_id = r.user_id
+        JOIN service s ON s.service_id = r.service_id
+        JOIN time_slot ts ON ts.slot_id = r.slot_id
+        JOIN payment p ON p.reservation_id = r.reservation_id
+        LEFT JOIN invoice i ON i.reservation_id = r.reservation_id
+        WHERE r.reservation_status = 'active' AND p.payment_status = 'paid' AND p.refund_status = 'not_requested' AND $operationWhere";
+    $operationCountStmt = $pdo->prepare("SELECT COUNT(*) $operationBase");
+    $operationCountStmt->execute($operationParams);
+    $operationTotal = (int) $operationCountStmt->fetchColumn();
+    $operationTotalPages = max(1, (int) ceil($operationTotal / $operationPerPage));
+    $operationPage = min($operationPage, $operationTotalPages);
+    $operationStmt = $pdo->prepare("SELECT r.reservation_id, r.reservation_status, u.full_name,
+            u.phone_number, s.service_name, ts.slot_date, ts.start_time, ts.end_time,
+            COALESCE(i.total_payment, p.amount, 0) AS total_payment,
+            p.payment_type
+        $operationBase
+        ORDER BY ts.slot_date, ts.start_time, r.reservation_id
+        LIMIT :limit OFFSET :offset");
+    foreach ($operationParams as $key => $value) $operationStmt->bindValue(':' . $key, $value);
+    $operationStmt->bindValue(':limit', $operationPerPage, PDO::PARAM_INT);
+    $operationStmt->bindValue(':offset', ($operationPage - 1) * $operationPerPage, PDO::PARAM_INT);
+    $operationStmt->execute();
+    $operationReservations = $operationStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('Admin operational reservation queue error: ' . $e->getMessage());
+    $operationError = 'Daftar reservasi mendatang gagal dimuat.';
+}
+
 $escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $selectedDateLabel = $selectedDate->format('d/m/Y');
 $monthNames = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -214,6 +292,16 @@ $chartBaseY = 205;
 $chartMaxHeight = 155;
 $chartStep = $chartWidth / max(1, count($chartItems));
 $chartBarWidth = min(22, $chartStep * 0.62);
+$operationUrl = static function (string $period, int $page) use ($range, $date, $customStartValue, $customEndValue, $query): string {
+    $params = ['range' => $range, 'ops_period' => $period, 'ops_page' => $page];
+    if ($range === 'day') $params['date'] = $date;
+    if ($range === 'custom') {
+        $params['start_date'] = $customStartValue;
+        $params['end_date'] = $customEndValue;
+    }
+    if ($query !== '') $params['q'] = $query;
+    return 'reservations.php?' . http_build_query($params);
+};
 $adminPageTitle = 'Pemasukan & Reservasi | Pemon Admin';
 $adminPageScript = '../assets/js/admin-reservations.js';
 ?>
@@ -230,6 +318,63 @@ $adminPageScript = '../assets/js/admin-reservations.js';
   </div>
 
   <?php if ($pageError !== ''): ?><p role="alert" class="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"><?= $escape($pageError) ?></p><?php endif; ?>
+
+  <section class="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+    <div class="border-b border-slate-100 p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold">Penanganan reservasi mendatang</h2>
+          <p class="mt-1 text-sm text-slate-500">Hubungi pelanggan dan sepakati perubahan sebelum memindahkan atau membatalkan jadwal.</p>
+        </div>
+        <span class="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">Pembayaran lunas · <?= array_sum($operationCounts) ?> mendatang</span>
+      </div>
+      <nav class="mt-4 flex flex-wrap gap-2" aria-label="Filter jadwal mendatang">
+        <?php foreach ([['today', 'Hari ini'], ['tomorrow', 'Besok'], ['later', 'Lusa dan seterusnya']] as [$periodKey, $periodTitle]):
+          $tabClass = $operationPeriod === $periodKey ? 'bg-[#0d3b36] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200';
+        ?>
+          <a href="<?= $escape($operationUrl($periodKey, 1)) ?>" class="rounded-lg px-3 py-2 text-xs font-semibold <?= $tabClass ?>"><?= $escape($periodTitle) ?> <span class="ml-1 opacity-80"><?= $operationCounts[$periodKey] ?></span></a>
+        <?php endforeach; ?>
+      </nav>
+    </div>
+    <?php if ($operationError !== ''): ?>
+      <p role="alert" class="m-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"><?= $escape($operationError) ?></p>
+    <?php else: ?>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[980px] text-sm">
+          <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500"><tr>
+            <th class="px-4 py-3 text-left font-semibold">Pelanggan</th><th class="px-4 py-3 text-left font-semibold">Layanan</th><th class="px-4 py-3 text-left font-semibold">Jadwal</th><th class="px-4 py-3 text-left font-semibold">Pembayaran</th><th class="px-4 py-3 text-right font-semibold">Total</th><th class="px-4 py-3 text-right font-semibold">Tindakan</th>
+          </tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <?php if ($operationReservations === []): ?>
+              <tr><td colspan="6" class="px-4 py-10 text-center text-slate-500">Tidak ada reservasi lunas pada kategori tanggal ini.</td></tr>
+            <?php else: foreach ($operationReservations as $operationReservation):
+              $operationStart = new DateTimeImmutable((string) $operationReservation['slot_date'] . ' ' . (string) $operationReservation['start_time'], $timezone);
+              $operationDateLabel = $operationStart->format('d/m/Y');
+            ?>
+              <tr class="hover:bg-slate-50">
+                <td class="px-4 py-4"><p class="font-semibold"><?= $escape($operationReservation['full_name']) ?></p><p class="text-xs text-slate-500">#<?= (int) $operationReservation['reservation_id'] ?> · <?= $escape($operationReservation['phone_number']) ?></p></td>
+                <td class="px-4 py-4"><?= $escape($operationReservation['service_name']) ?></td>
+                <td class="px-4 py-4"><p><?= $escape($operationDateLabel) ?></p><p class="text-xs text-slate-500"><?= $escape(substr((string) $operationReservation['start_time'], 0, 5)) ?>–<?= $escape(substr((string) $operationReservation['end_time'], 0, 5)) ?> WIB</p></td>
+                <td class="px-4 py-4"><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">Lunas</span><p class="mt-1 text-xs text-slate-500"><?= $escape($operationReservation['payment_type'] ?? '') ?></p></td>
+                <td class="px-4 py-4 text-right font-semibold">Rp <?= number_format((float) $operationReservation['total_payment'], 0, ',', '.') ?></td>
+                <td class="px-4 py-4 text-right"><div class="flex justify-end gap-2">
+                  <button type="button" class="open-reschedule rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100" data-reservation-id="<?= (int) $operationReservation['reservation_id'] ?>" data-customer="<?= $escape($operationReservation['full_name']) ?>" data-current="<?= $escape($operationStart->format('d/m/Y H:i')) ?>">Ganti jadwal</button>
+                  <button type="button" class="cancel-affected-reservation rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100" data-reservation-id="<?= (int) $operationReservation['reservation_id'] ?>" data-customer="<?= $escape($operationReservation['full_name']) ?>">Batalkan &amp; refund</button>
+                </div></td>
+              </tr>
+            <?php endforeach; endif; ?>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
+        <p class="text-sm text-slate-500">Halaman <?= $operationPage ?> dari <?= $operationTotalPages ?> · <?= $operationTotal ?> reservasi</p>
+        <div class="flex gap-2">
+          <?php if ($operationPage > 1): ?><a href="<?= $escape($operationUrl($operationPeriod, $operationPage - 1)) ?>" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Sebelumnya</a><?php endif; ?>
+          <?php if ($operationPage < $operationTotalPages): ?><a href="<?= $escape($operationUrl($operationPeriod, $operationPage + 1)) ?>" class="rounded-lg bg-[#0d3b36] px-4 py-2 text-sm font-semibold text-white">Berikutnya</a><?php endif; ?>
+        </div>
+      </div>
+    <?php endif; ?>
+  </section>
 
   <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <div class="rounded-2xl bg-white p-5 shadow-sm">
@@ -404,6 +549,34 @@ $adminPageScript = '../assets/js/admin-reservations.js';
       </div>
     </nav>
   </section>
+
+  <input id="admin-reservations-csrf" type="hidden" value="<?= $escape($csrfToken) ?>">
+  <dialog id="reschedule-dialog" class="w-[min(94vw,32rem)] rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/40">
+    <form id="reschedule-form" class="space-y-5 p-6">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-emerald-800">Penanganan reservasi</p>
+        <h2 class="mt-1 text-xl font-bold">Ganti jadwal</h2>
+        <p id="reschedule-customer" class="mt-2 text-sm text-slate-600"></p>
+        <p id="reschedule-current" class="text-sm text-slate-500"></p>
+      </div>
+      <input id="reschedule-id" type="hidden">
+      <label class="block text-sm font-semibold">Tanggal baru
+        <input id="reschedule-date" type="date" required min="<?= $escape($today->format('Y-m-d')) ?>" class="mt-2 block w-full rounded-xl border border-slate-200 px-3 py-3 font-normal">
+      </label>
+      <label class="block text-sm font-semibold">Slot yang tersedia
+        <select id="reschedule-slot" required disabled class="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 font-normal"><option value="">Pilih tanggal terlebih dahulu</option></select>
+      </label>
+      <label class="block text-sm font-semibold">Catatan kendala
+        <input id="reschedule-reason" maxlength="500" value="Kendala operasional" class="mt-2 block w-full rounded-xl border border-slate-200 px-3 py-3 font-normal">
+      </label>
+      <label class="flex items-start gap-3 text-sm text-slate-700"><input id="reschedule-consent" type="checkbox" required class="mt-1 accent-[#0d3b36]">Saya sudah menghubungi pelanggan dan pelanggan menyetujui jadwal baru ini.</label>
+      <p id="reschedule-message" role="status" class="hidden rounded-xl px-4 py-3 text-sm"></p>
+      <div class="flex justify-end gap-3">
+        <button type="button" id="close-reschedule" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Kembali</button>
+        <button id="submit-reschedule" type="submit" disabled class="rounded-xl bg-[#0d3b36] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Pindahkan reservasi</button>
+      </div>
+    </form>
+  </dialog>
 </main>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
