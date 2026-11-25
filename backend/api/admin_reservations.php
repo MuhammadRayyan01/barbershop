@@ -84,7 +84,7 @@ requireValidCsrfToken();
 $data = readJsonResponse();
 $reservationId = $data['reservation_id'] ?? null;
 $action = $data['action'] ?? '';
-if (!is_int($reservationId) || $reservationId < 1 || !in_array($action, ['mark_paid', 'cancel'], true)) {
+if (!is_int($reservationId) || $reservationId < 1 || $action !== 'mark_paid') {
     jsonResponse(422, ['success' => false, 'message' => 'A valid reservation and action are required.']);
 }
 
@@ -102,24 +102,18 @@ try {
         jsonResponse(409, ['success' => false, 'message' => 'Only active reservations can be changed.']);
     }
 
-    if ($action === 'cancel') {
-        $stmt = $pdo->prepare("UPDATE reservation SET reservation_status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE reservation_id = :id");
-        $stmt->execute(['id' => $reservationId]);
-        $message = 'Reservation cancelled.';
-    } else {
-        $stmt = $pdo->prepare('SELECT total_payment FROM invoice WHERE reservation_id = :id');
-        $stmt->execute(['id' => $reservationId]);
-        $amount = $stmt->fetchColumn();
-        if ($amount === false) {
-            $pdo->rollBack();
-            jsonResponse(409, ['success' => false, 'message' => 'Reservation invoice is missing.']);
-        }
-        $stmt = $pdo->prepare("INSERT INTO payment (reservation_id, payment_type, payment_status, amount)
-            VALUES (:id, 'cash', 'paid', :amount)
-            ON CONFLICT (reservation_id) DO UPDATE SET payment_type = 'cash', payment_status = 'paid', amount = EXCLUDED.amount, updated_at = CURRENT_TIMESTAMP");
-        $stmt->execute(['id' => $reservationId, 'amount' => $amount]);
-        $message = 'Cash payment recorded.';
+    $stmt = $pdo->prepare('SELECT total_payment FROM invoice WHERE reservation_id = :id');
+    $stmt->execute(['id' => $reservationId]);
+    $amount = $stmt->fetchColumn();
+    if ($amount === false) {
+        $pdo->rollBack();
+        jsonResponse(409, ['success' => false, 'message' => 'Reservation invoice is missing.']);
     }
+    $stmt = $pdo->prepare("INSERT INTO payment (reservation_id, payment_type, payment_status, amount)
+        VALUES (:id, 'cash', 'paid', :amount)
+        ON CONFLICT (reservation_id) DO UPDATE SET payment_type = 'cash', payment_status = 'paid', amount = EXCLUDED.amount, updated_at = CURRENT_TIMESTAMP");
+    $stmt->execute(['id' => $reservationId, 'amount' => $amount]);
+    $message = 'Cash payment recorded.';
     $pdo->commit();
     jsonResponse(200, ['success' => true, 'message' => $message]);
 } catch (Throwable $e) {
