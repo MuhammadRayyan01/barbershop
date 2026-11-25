@@ -6,7 +6,7 @@ require_once __DIR__ . '/../config/db.php';
 header('Content-Type: application/json');
 
 try {
-    $stmt = $pdo->query("SELECT service_id, service_name, description, price FROM service WHERE status = 'active' ORDER BY service_name");
+    $stmt = $pdo->query("SELECT service_id, service_name, description, price, duration_minutes FROM service WHERE status = 'active' ORDER BY service_name");
     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode([
