@@ -357,6 +357,9 @@ function selectPayment(element) {
     const confirm = input.confirm.value;
 
     if (fullName.length < 3) return showError('Nama lengkap minimal 3 karakter.');
+    if (!/^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+)*$/u.test(fullName)) {
+      return showError('Nama lengkap hanya boleh berisi huruf dan spasi.');
+    }
     if (phone.replace(/\D/g, '').length < 9) return showError('Nomor handphone minimal 9 digit.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Format email belum benar.');
 
