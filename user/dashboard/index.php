@@ -55,7 +55,7 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
 
         <div
-            class="grid grid-cols-2 gap-4 sm:gap-8"
+            class="grid grid-cols-1 gap-4 sm:gap-8"
             aria-label="Ringkasan reservasi"
         >
             <div class="space-y-1">
@@ -67,18 +67,6 @@ require_once __DIR__ . '/../../includes/header.php';
 
                 <p class="text-xs sm:text-sm text-gray-600">
                     Reservasi mendatang
-                </p>
-            </div>
-
-            <div class="space-y-1">
-                <span class="material-symbols-rounded text-3xl text-amber-500">
-                    payments
-                </span>
-
-                <p id="jumlah-pembayaran" class="text-2xl font-bold">0</p>
-
-                <p class="text-xs sm:text-sm text-gray-600">
-                    Menunggu pembayaran
                 </p>
             </div>
         </div>
