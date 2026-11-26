@@ -24,6 +24,9 @@
     const selectedSlotInput =
         document.getElementById('selected-slot-id');
 
+    const customerMessageInput = document.getElementById('customer-message');
+    const customerMessageCount = document.getElementById('customer-message-count');
+
     const continueButton =
         document.getElementById('continue-booking');
 
@@ -194,6 +197,7 @@
 
     function setBookingControlsDisabled(disabled) {
         dateInput.disabled = disabled;
+        if (customerMessageInput) customerMessageInput.disabled = disabled;
         additionalServiceButtons.forEach(button => { button.disabled = disabled; });
 
         serviceButtons.forEach(button => {
@@ -577,6 +581,13 @@
         state.slotId = String(hold.slot_id);
         state.serviceId = String(hold.service_id);
         updateAdditionalServices(state.serviceId, hold.additional_service_id || '');
+
+        if (customerMessageInput) {
+            customerMessageInput.value = hold.customer_message || '';
+            if (customerMessageCount) {
+                customerMessageCount.textContent = String(customerMessageInput.value.length);
+            }
+        }
 
         dateInput.value = state.date;
 
@@ -1005,7 +1016,8 @@
                 service_id: Number(state.serviceId),
                 additional_service_id: selectedAdditionalServiceInput?.value
                     ? Number(selectedAdditionalServiceInput.value)
-                    : null
+                    : null,
+                customer_message: customerMessageInput?.value.trim() || ''
             });
 
             const hold = payload.data;
@@ -1048,6 +1060,12 @@
         }
 
         createBookingHold();
+    });
+
+    customerMessageInput?.addEventListener('input', () => {
+        if (customerMessageCount) {
+            customerMessageCount.textContent = String(customerMessageInput.value.length);
+        }
     });
 
     // Initial page setup

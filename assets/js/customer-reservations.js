@@ -49,6 +49,9 @@
     if (reservation.additional_service_name) {
       details.append(element('p', 'mt-1 text-xs text-gray-500', `Layanan tambahan: ${reservation.additional_service_name}`));
     }
+    if (reservation.customer_message) {
+      details.append(element('p', 'mt-2 max-w-xl whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600', 'Pesan Anda: ' + reservation.customer_message));
+    }
     if (reservation.old_slot_date && reservation.old_start_time) {
       let scheduleMessage = `Jadwal diubah oleh barbershop dari ${dateLabel(reservation.old_slot_date)} pukul ${String(reservation.old_start_time).slice(0, 5)}. Gunakan jadwal terbaru di atas.`;
       if (reservation.schedule_change_reason) scheduleMessage += ` Alasan: ${reservation.schedule_change_reason}.`;

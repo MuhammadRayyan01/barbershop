@@ -706,6 +706,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const refundComplete = reservation.refund_status === 'completed' ||
                     reservation.payment_status === 'refunded';
 
+                if (reservation.customer_message) {
+                    const customerMessage = document.createElement('p');
+                    customerMessage.className = 'mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 whitespace-pre-wrap';
+                    customerMessage.textContent = 'Pesan Anda: ' + reservation.customer_message;
+                    details.appendChild(customerMessage);
+                }
+
                 if (adminCancelled && !refundComplete) {
                     const notice = document.createElement('p');
                     notice.className = 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900';

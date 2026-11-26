@@ -67,6 +67,7 @@ if ($method === 'GET') {
                 r.admin_cancelled_at,
                 r.service_price,
                 r.additional_service_price,
+                r.customer_message,
                 r.created_at,
                 s.service_name,
                 ts.slot_date,

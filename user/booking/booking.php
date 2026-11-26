@@ -313,6 +313,15 @@ require __DIR__ . '/../../includes/header.php';
                 Pilih tanggal dan waktu reservasi.
             </div>
 
+            <div class="rounded-2xl bg-white p-4 shadow-sm">
+                <label for="customer-message" class="block text-sm font-semibold text-[#0d3b36]">
+                    Pesan untuk barber <span class="font-normal text-gray-400">(opsional)</span>
+                </label>
+                <p class="mt-1 text-xs text-gray-500">Tuliskan preferensi atau informasi yang perlu diketahui sebelum layanan dimulai.</p>
+                <textarea id="customer-message" name="customer_message" rows="3" maxlength="500" placeholder="Contoh: bagian samping ingin dibuat tipis." class="mt-3 w-full resize-y rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-800 outline-none focus:border-[#0d3b36] focus:ring-2 focus:ring-[#0d3b36]/10"></textarea>
+                <p class="mt-1 text-right text-xs text-gray-400"><span id="customer-message-count">0</span>/500</p>
+            </div>
+
             <!-- Booking actions -->
             <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
 

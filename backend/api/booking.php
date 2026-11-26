@@ -258,6 +258,7 @@ if ($action === 'get_active_hold') {
                 bh.slot_id,
                 bh.service_id,
                 bh.additional_service_id,
+                bh.customer_message,
                 bh.total_amount,
                 bh.expires_at,
 
@@ -314,6 +315,7 @@ if ($action === 'get_active_hold') {
                 'additional_service_id' => $hold['additional_service_id'] !== null
                     ? (int) $hold['additional_service_id']
                     : null,
+                'customer_message' => $hold['customer_message'] ?? '',
                 'total_amount' => (float) $hold['total_amount'],
                 'expires_at' => $hold['expires_at'],
                 'slot_date' => $hold['slot_date'],
@@ -367,6 +369,24 @@ if ($action === 'create_hold') {
     )
         ? null
         : filter_var($addonRaw, FILTER_VALIDATE_INT);
+
+    $customerMessageRaw = $body['customer_message'] ?? '';
+    if (!is_string($customerMessageRaw)) {
+        bookingApiResponse(422, [
+            'success' => false,
+            'message' => 'Booking message must be plain text.'
+        ]);
+    }
+    $customerMessage = trim($customerMessageRaw);
+    $customerMessageLength = function_exists('mb_strlen')
+        ? mb_strlen($customerMessage, 'UTF-8')
+        : strlen($customerMessage);
+    if ($customerMessageLength > 500) {
+        bookingApiResponse(422, [
+            'success' => false,
+            'message' => 'Booking message cannot exceed 500 characters.'
+        ]);
+    }
 
     if (
         !$slotId || $slotId < 1 ||
@@ -614,6 +634,7 @@ if ($action === 'create_hold') {
                 service_price,
                 additional_service_id,
                 additional_service_price,
+                customer_message,
                 total_amount,
                 hold_status,
                 expires_at
@@ -625,6 +646,7 @@ if ($action === 'create_hold') {
                 :service_price,
                 :addon_id,
                 :addon_price,
+                :customer_message,
                 :total_amount,
                 'active',
                 CURRENT_TIMESTAMP + INTERVAL '5 minutes'
@@ -642,6 +664,7 @@ if ($action === 'create_hold') {
             'service_price' => $servicePrice,
             'addon_id' => $addonId,
             'addon_price' => $addonPrice,
+            'customer_message' => $customerMessage === '' ? null : $customerMessage,
             'total_amount' => $totalAmount
         ]);
 
