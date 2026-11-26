@@ -35,10 +35,10 @@ if(!is_array($data)){
     respond(400, ['success' => false, 'message' => 'Invalid request body']);
 }
 
-$username = trim($data['username'] ?? '');
-$email = trim($data['email'] ?? '');
-$fullName = trim($data['full_name'] ?? '');
-$phoneNumber = trim($data['phone_number'] ?? '');
+$username = is_string($data['username'] ?? null) ? trim($data['username']) : '';
+$email = is_string($data['email'] ?? null) ? trim($data['email']) : '';
+$fullName = is_string($data['full_name'] ?? null) ? trim($data['full_name']) : '';
+$phoneNumber = is_string($data['phone_number'] ?? null) ? trim($data['phone_number']) : '';
 $password = $data['password'] ?? '';
 
 if(!is_string($username) ||
@@ -71,6 +71,10 @@ if (
 
 if (filter_var($email, FILTER_VALIDATE_EMAIL) === false){
     respond(422, ['success' => false, 'message' => 'Enter a valid email address.']);
+}
+
+if (filter_var($username, FILTER_VALIDATE_EMAIL) !== false){
+    respond(422, ['success' => false, 'message' => 'Username tidak boleh berupa alamat email.']);
 }
 
 if (strlen($password) < 12 || strlen($password) > 72){
