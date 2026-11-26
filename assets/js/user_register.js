@@ -34,6 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) {
+                showMessage('Username tidak boleh berupa alamat email.');
+                return;
+            }
+
             if(password.length < 12 || password.length > 72){
                 showMessage('Password must be between 12 and 72 characters.');
                 return;
