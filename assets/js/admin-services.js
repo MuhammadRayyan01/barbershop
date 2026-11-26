@@ -1,20 +1,6 @@
 initAdminShell('services', ['Studio Management', 'Administration Portal', 'Services']);
 
-const searchInput = document.getElementById('search');
-const serviceRows = [...document.querySelectorAll('.service-row')];
 const serviceForm = document.getElementById('update-form');
-
-function filterServices() {
-  const query = searchInput.value.trim().toLowerCase();
-  document.getElementById('clear-search').classList.toggle('hidden', !query);
-  let visible = 0;
-  serviceRows.forEach(row => {
-    const matches = `${row.dataset.name} ${row.dataset.description}`.toLowerCase().includes(query);
-    row.classList.toggle('hidden', !matches);
-    if (matches) visible++;
-  });
-  document.getElementById('total-chip').textContent = `Menampilkan ${visible} dari ${serviceRows.length} layanan aktif`;
-}
 
 document.getElementById('svc-body').addEventListener('click', async event => {
   const button = event.target.closest('[data-act]');
@@ -25,6 +11,7 @@ document.getElementById('svc-body').addEventListener('click', async event => {
     document.getElementById('f-name').value = button.dataset.name;
     document.getElementById('f-price').value = Number(button.dataset.price).toLocaleString('id-ID');
     document.getElementById('f-desc').value = button.dataset.description;
+    document.getElementById('f-duration').value = button.dataset.duration || '30';
     document.getElementById('f-error').classList.add('hidden');
     openModal('update-modal');
     return;
@@ -49,23 +36,17 @@ document.getElementById('f-price').addEventListener('input', event => {
 serviceForm.addEventListener('submit', event => {
   const name = document.getElementById('f-name').value.trim();
   const price = digitsOnly(document.getElementById('f-price').value);
+  const duration = Number(document.getElementById('f-duration').value);
   const errorBox = document.getElementById('f-error');
-  if (!name || !price) {
+  if (!name || !price || !Number.isInteger(duration) || duration < 15 || duration > 240) {
     event.preventDefault();
-    errorBox.textContent = 'Nama layanan dan harga wajib diisi.';
+    errorBox.textContent = 'Nama, harga, dan durasi layanan harus valid (15–240 menit).';
     errorBox.classList.remove('hidden');
     return;
   }
   document.getElementById('f-price').value = price;
 });
 
-searchInput.addEventListener('input', filterServices);
-document.getElementById('clear-search').addEventListener('click', () => {
-  searchInput.value = '';
-  filterServices();
-});
-
-filterServices();
 if (serviceForm.dataset.reopen === '1') {
   document.getElementById('f-error').textContent = 'Periksa kembali data layanan sebelum disimpan.';
   document.getElementById('f-error').classList.remove('hidden');

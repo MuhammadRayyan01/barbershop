@@ -49,7 +49,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
             console.log('login successful: ', result.data);
 
-            window.location.href = 'dashboard/index.php';
+            const next = new URLSearchParams(window.location.search).get('next');
+            window.location.href = next === 'booking'
+                ? 'booking/booking.php'
+                : 'dashboard/index.php';
         }catch(error){
             console.error('login error: ', error);
             showMessage(error.message || 'unable to connect to the server.');

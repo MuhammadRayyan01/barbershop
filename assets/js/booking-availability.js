@@ -69,6 +69,23 @@
         return `${values.year}-${values.month}-${values.day}`;
     }
 
+    function getInitialBookingDate() {
+        const requestedDate = new URLSearchParams(window.location.search).get('date');
+        if (!requestedDate || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+            return getLocalDate();
+        }
+
+        const [year, month, day] = requestedDate.split('-').map(Number);
+        const parsedDate = new Date(Date.UTC(year, month - 1, day));
+        const isValidDate = parsedDate.getUTCFullYear() === year
+            && parsedDate.getUTCMonth() === month - 1
+            && parsedDate.getUTCDate() === day;
+
+        return isValidDate && requestedDate >= getLocalDate()
+            ? requestedDate
+            : getLocalDate();
+    }
+
     function formatDate(date) {
         return new Intl.DateTimeFormat('id-ID', {
             weekday: 'long',
@@ -157,11 +174,18 @@
 
         continueButton.hidden = Boolean(state.activeHold);
 
-        continueButton.disabled =
-            !ready ||
-            state.loading ||
-            state.creatingHold ||
-            state.releasingHold;
+        const canContinue = Boolean(
+            ready &&
+            !state.loading &&
+            !state.creatingHold &&
+            !state.releasingHold
+        );
+
+        continueButton.disabled = !canContinue;
+        continueButton.classList.toggle('bg-[#0d3b36]', canContinue);
+        continueButton.classList.toggle('hover:bg-[#082724]', canContinue);
+        continueButton.classList.toggle('bg-gray-400', !canContinue);
+        continueButton.classList.toggle('cursor-not-allowed', !canContinue);
 
         continueButton.textContent = state.creatingHold
             ? 'Menyiapkan reservasi...'
@@ -765,7 +789,7 @@
             'col-span-full mt-2 text-[11px] text-gray-500';
 
         information.textContent =
-            'Kapasitas maksimal 3 pelanggan untuk setiap slot satu jam.';
+            'Setiap slot berdurasi 1 jam. Kapasitas tiap jam mengikuti jumlah barber yang bertugas.';
 
         timeGroup.append(information);
 
@@ -1030,6 +1054,7 @@
 
     async function initializeBookingPage() {
         dateInput.min = getLocalDate();
+        const initialDate = getInitialBookingDate();
 
         try {
             const restored = await retrieveActiveHold();
@@ -1039,7 +1064,7 @@
                 return;
             }
 
-            dateInput.value = getLocalDate();
+            dateInput.value = initialDate;
             state.date = dateInput.value;
 
             updateSummary();
@@ -1052,7 +1077,7 @@
                 'Gagal memeriksa booking sebelumnya. Silakan muat ulang halaman.'
             );
 
-            dateInput.value = getLocalDate();
+            dateInput.value = initialDate;
             state.date = dateInput.value;
 
             updateSummary();
@@ -1085,5 +1110,3 @@
     });
 
 })();
-
-

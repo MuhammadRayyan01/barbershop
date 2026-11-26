@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatReservationDate(date, time) {
 
-        const dateObject = new Date(`${date}T${time}`);
+        const dateObject = new Date(`${date}T${time}+07:00`);
 
         if (Number.isNaN(dateObject.getTime())) {
             return `${date} ${time}`;
@@ -56,7 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return new Intl.DateTimeFormat('id-ID', {
             dateStyle: 'long',
-            timeStyle: 'short'
+
+            timeStyle: 'short',
+
+            timeZone: 'Asia/Jakarta'
+
         }).format(dateObject);
     }
 
@@ -526,35 +530,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const now = new Date();
 
-            const upcomingReservations = reservations.filter(
-                (reservation) => {
-
+            const upcomingReservations = reservations
+                .filter((reservation) => {
                     const appointment = new Date(
-                        `${reservation.slot_date}T${reservation.start_time}`
+                        `${reservation.slot_date}T${reservation.start_time}+07:00`
                     );
 
                     return (
                         reservation.reservation_status === 'active' &&
+                        !reservation.admin_cancelled_at &&
                         !Number.isNaN(appointment.getTime()) &&
                         appointment >= now
                     );
-                }
-            );
-            const adminCancelledReservations = reservations.filter(
-                (reservation) => Boolean(reservation.admin_cancelled_at)
-            );
+                })
+                .sort((a, b) => {
+                    const timeA = new Date(`${a.slot_date}T${a.start_time}+07:00`);
+                    const timeB = new Date(`${b.slot_date}T${b.start_time}+07:00`);
+                    return timeA - timeB;
+                });
+
+            const adminCancelledReservations = reservations
+                .filter((reservation) => Boolean(reservation.admin_cancelled_at))
+                .sort((a, b) => String(b.admin_cancelled_at).localeCompare(String(a.admin_cancelled_at)));
+
+            // Keep the dashboard concise while showing recent admin cancellations
+            // alongside the next few active appointments.
             const dashboardReservations = [
-                ...adminCancelledReservations,
-                ...upcomingReservations.filter((reservation) => !reservation.admin_cancelled_at)
+                ...adminCancelledReservations.slice(0, 3),
+                ...upcomingReservations.slice(0, 3)
             ];
 
-            const pendingPayments = reservations.filter(
-                (reservation) => {
-
-                    return reservation.reservation_status === 'active' &&
-                        reservation.payment_status === 'pending';
-                }
-            );
+            const pendingPayments = reservations.filter((reservation) => (
+                reservation.reservation_status === 'active' &&
+                reservation.payment_status === 'pending'
+            ));
 
             if (reservationCount) {
 
@@ -573,17 +582,42 @@ document.addEventListener('DOMContentLoaded', () => {
             reservationContainer.replaceChildren();
 
             if (dashboardReservations.length === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'rounded-2xl bg-[#f8fbf9] px-5 py-8 text-center';
 
                 const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'text-sm text-gray-600';
+                emptyMessage.textContent = 'Belum ada jadwal mendatang. Saat siap, pilih layanan dan waktu yang cocok untukmu.';
 
-                emptyMessage.className = 'text-sm text-gray-500';
-
-                emptyMessage.textContent =
-                    'Belum ada reservasi mendatang.';
-
-                reservationContainer.appendChild(emptyMessage);
+                emptyState.appendChild(emptyMessage);
+                reservationContainer.appendChild(emptyState);
 
                 return;
+            }
+
+            if (upcomingReservations.length > 0) {
+                const nextReservation = upcomingReservations[0];
+                const nextAppointment = new Date(
+                    `${nextReservation.slot_date}T${nextReservation.start_time}+07:00`
+                );
+                const hoursUntilNextAppointment = (nextAppointment - now) / (1000 * 60 * 60);
+
+                if (hoursUntilNextAppointment <= 24) {
+                    const reminder = document.createElement('div');
+                    reminder.setAttribute('role', 'status');
+                    reminder.className = 'mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900';
+
+                    const reminderTitle = document.createElement('p');
+                    reminderTitle.className = 'font-bold';
+                    reminderTitle.textContent = 'Pengingat reservasi';
+
+                    const reminderText = document.createElement('p');
+                    reminderText.className = 'mt-1';
+                    reminderText.textContent = `${nextReservation.service_name || 'Reservasi Anda'} dijadwalkan ${formatReservationDate(nextReservation.slot_date, nextReservation.start_time)}. Silakan datang 10 menit lebih awal.`;
+
+                    reminder.append(reminderTitle, reminderText);
+                    reservationContainer.appendChild(reminder);
+                }
             }
 
             dashboardReservations.forEach((reservation) => {
@@ -606,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const service = document.createElement('p');
 
-                service.className = 'font-semibold text-sm';
+                service.className = 'font-bold text-[#0d3b36]';
 
                 service.textContent =
                     reservation.service_name || 'Layanan';
@@ -622,7 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const additional = document.createElement('p');
 
-                additional.className = 'text-xs text-gray-500';
+                additional.className = 'mt-1 text-xs text-gray-500';
 
                 additional.textContent =
                     reservation.additional_service_name
@@ -635,12 +669,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         Number(reservation.additional_service_price || 0)
                     );
 
-                const payment = document.createElement('p');
 
-                payment.className = 'text-sm font-semibold';
+                const actions = document.createElement('div');
+                actions.className = 'flex items-center justify-between gap-4 sm:justify-end';
 
-                payment.textContent =
-                    `Total: ${formatRupiah(total)}`;
+                const amount = document.createElement('p');
+                amount.className = 'text-sm font-bold text-[#0d3b36]';
+                amount.textContent = formatRupiah(total);
 
                     const paymentStatuses = {
                     pending: 'Menunggu pembayaran',
@@ -665,7 +700,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     service,
                     date,
                     additional,
-                    payment,
                     status
                 );
 
@@ -695,6 +729,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pengembalian dana akan diproses.';
                     }
                     details.appendChild(notice);
+                }
+
+                if (!adminCancelled && reservation.schedule_changed_at) {
+                    const scheduleNotice = document.createElement('p');
+                    scheduleNotice.className = 'mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-900';
+                    const oldDate = reservation.old_slot_date && reservation.old_start_time
+                        ? ` dari ${formatReservationDate(reservation.old_slot_date, reservation.old_start_time)}`
+                        : '';
+                    const reason = reservation.schedule_change_reason
+                        ? ` Alasan: ${reservation.schedule_change_reason}.`
+                        : '';
+                    scheduleNotice.textContent = `Jadwal reservasi ini diubah oleh barbershop${oldDate}. Gunakan jadwal terbaru di atas.${reason}`;
+                    details.appendChild(scheduleNotice);
                 }
 
                 const timerPanel = document.createElement('div');
@@ -751,6 +798,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 card.appendChild(layout);
+
+                const detailLink = document.createElement('a');
+                detailLink.href = `../booking/success.php?reservation_id=${encodeURIComponent(reservation.reservation_id)}`;
+                detailLink.className = 'rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50';
+                detailLink.textContent = 'Detail';
+                actions.append(amount, detailLink);
+                card.appendChild(actions);
 
                 if (
                     reservation.refund_status &&
@@ -842,14 +896,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 reservationContainer.appendChild(card);
             });
 
+            if (upcomingReservations.length > 3 || adminCancelledReservations.length > 3) {
+                const allLink = document.createElement('a');
+                allLink.href = 'reservations.php';
+                allLink.className = 'inline-flex pt-1 text-sm font-semibold text-[#0d3b36] hover:underline';
+                allLink.textContent = 'Lihat semua reservasi';
+                reservationContainer.appendChild(allLink);
+            }
+
+
         } catch (error) {
 
             console.error('Reservation loading error:', error);
 
             clearCountdowns();
 
-            reservationContainer.textContent =
-                'Gagal memuat data reservasi.';
+            reservationContainer.replaceChildren();
+            const errorMessage = document.createElement('p');
+            errorMessage.className = 'rounded-xl bg-red-50 p-4 text-sm text-red-700';
+            errorMessage.textContent = 'Jadwal reservasi gagal dimuat. Coba muat ulang halaman.';
+            reservationContainer.appendChild(errorMessage);
         }
     }
 
