@@ -20,7 +20,7 @@ $headerBodyClass = $userBodyClass ?? 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b3
 
 $dashboardUrl = $assetPrefix . 'user/dashboard/index.php';
 $scheduleUrl = $assetPrefix . 'user/dashboard/schedule.php';
-$bookingUrl = $assetPrefix . 'user/booking/booking.php';
+$reservationsUrl = $assetPrefix . 'user/dashboard/reservations.php';
 $aboutUrl = $assetPrefix . 'user/dashboard/aboutUs.html';
 $loginUrl = $assetPrefix . 'user/login.php';
 $logoutUrl = $assetPrefix . 'backend/auth/logout.php';
@@ -59,7 +59,7 @@ $headerNavLink = static function (string $key, string $label, string $url) use (
       <?= $headerNavLink('dashboard', 'Dashboard', $dashboardUrl) ?>
       <?= $headerNavLink('schedule', 'Jadwal', $scheduleUrl) ?>
       <?= $headerNavLink('about', 'Tentang', $aboutUrl) ?>
-      <?= $headerNavLink('booking', 'Reservasi', $bookingUrl) ?>
+      <?= $headerNavLink('reservations', 'Reservasi', $reservationsUrl) ?>
     </nav>
 
     <?php if ($headerLoggedIn): ?>
@@ -81,7 +81,7 @@ $headerNavLink = static function (string $key, string $label, string $url) use (
             <p id="akun-hp" class="text-xs text-gray-600"></p>
           </div>
           <button id="akun-edit-btn" type="button" class="block w-full px-4 py-2 text-left hover:bg-gray-50">Edit Profil</button>
-          <a href="<?= $headerEscape($scheduleUrl) ?>" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
+          <a href="<?= $headerEscape($reservationsUrl) ?>" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
           <!-- Normal POST form: works even without JavaScript. app.js shows a confirm popup first. -->
           <form id="akun-logout-form" method="post" action="<?= $headerEscape($logoutUrl) ?>">
             <input type="hidden" name="csrf_token" value="<?= $headerEscape($csrfToken ?? '') ?>">
@@ -101,7 +101,8 @@ $headerNavLink = static function (string $key, string $label, string $url) use (
         <h2 id="akun-modal-title" class="text-lg font-bold">Edit Data Profil</h2>
         <div>
           <label for="akun-input-nama" class="text-sm font-semibold">Nama Lengkap</label>
-          <input id="akun-input-nama" type="text" autocomplete="name" class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+          <input id="akun-input-nama" type="text" autocomplete="name" maxlength="255" aria-describedby="akun-nama-hint" class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+          <p id="akun-nama-hint" class="mt-1 text-xs text-gray-500">Gunakan huruf dan spasi saja.</p>
         </div>
         <div>
           <label for="akun-input-hp" class="text-sm font-semibold">Nomor Handphone / WhatsApp</label>
