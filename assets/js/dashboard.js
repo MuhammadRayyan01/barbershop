@@ -669,12 +669,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     status
                 );
 
-                if (adminCancelled) {
+                const refundComplete = reservation.refund_status === 'completed' ||
+                    reservation.payment_status === 'refunded';
+
+                if (adminCancelled && !refundComplete) {
                     const notice = document.createElement('p');
                     notice.className = 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900';
-                    if (reservation.refund_status === 'completed' || reservation.payment_status === 'refunded') {
-                        notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Dana telah dikembalikan ke bank atau e-wallet yang Anda gunakan.';
-                    } else if (reservation.refund_status === 'pending' && reservation.refund_method === 'manual') {
+                    if (reservation.refund_status === 'pending' && reservation.refund_method === 'manual') {
                         notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pengembalian dana sedang diproses oleh barbershop.';
                     } else if (reservation.refund_status === 'pending') {
                         notice.textContent = 'Reservasi Anda dibatalkan oleh admin. Pembayaran akan dikembalikan ke bank atau e-wallet yang Anda gunakan.';
