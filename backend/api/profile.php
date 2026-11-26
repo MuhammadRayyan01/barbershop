@@ -146,6 +146,16 @@ try {
         }
 
         if (
+            $field === 'full_name' &&
+            preg_match('/^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+)*$/u', $value) !== 1
+        ) {
+            jsonResponse(422, [
+                'success' => false,
+                'message' => 'Nama lengkap hanya boleh berisi huruf dan spasi.'
+            ]);
+        }
+
+        if (
             $field === 'email' &&
             !filter_var($value, FILTER_VALIDATE_EMAIL)
         ) {
