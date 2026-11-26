@@ -1,8 +1,11 @@
 <?php
 require_once __DIR__ . '/../backend/middleware/require_admin_page.php';
+require_once __DIR__ . '/../backend/config/csrf.php';
 
 $timezone = new DateTimeZone('Asia/Jakarta');
 $today = new DateTimeImmutable('today', $timezone);
+$now = new DateTimeImmutable('now', $timezone);
+$csrfToken = getCsrfToken();
 $range = $_GET['range'] ?? 'day';
 if (!in_array($range, ['day', 'all'], true)) $range = 'day';
 $date = $_GET['date'] ?? $today->format('Y-m-d');
@@ -245,11 +248,11 @@ $adminPageScript = '../assets/js/admin-reservations.js';
     <div class="overflow-x-auto">
       <table class="w-full min-w-[900px] text-sm">
         <thead class="bg-indigo-50/60 text-[11px] uppercase tracking-wider text-slate-500"><tr>
-          <th class="px-4 py-3 text-left font-semibold">Pelanggan</th><th class="px-4 py-3 text-left font-semibold">Telepon</th><th class="px-4 py-3 text-left font-semibold">Layanan</th><th class="px-4 py-3 text-left font-semibold">Jadwal</th><th class="px-4 py-3 text-left font-semibold">Status pembayaran</th><th class="px-4 py-3 text-right font-semibold">Total</th>
+          <th class="px-4 py-3 text-left font-semibold">Pelanggan</th><th class="px-4 py-3 text-left font-semibold">Telepon</th><th class="px-4 py-3 text-left font-semibold">Layanan</th><th class="px-4 py-3 text-left font-semibold">Jadwal</th><th class="px-4 py-3 text-left font-semibold">Status pembayaran</th><th class="px-4 py-3 text-right font-semibold">Total</th><th class="px-4 py-3 text-right font-semibold">Tindakan</th>
         </tr></thead>
         <tbody class="divide-y divide-slate-100">
           <?php if ($reservations === []): ?>
-            <tr><td colspan="6" class="px-4 py-12 text-center text-slate-500"><?= $query === '' ? ($range === 'all' ? 'Belum ada pembayaran lunas atau refund.' : 'Belum ada pembayaran lunas atau refund pada tanggal ini.') : 'Pembayaran lunas atau refund yang cocok tidak ditemukan.' ?></td></tr>
+            <tr><td colspan="7" class="px-4 py-12 text-center text-slate-500"><?= $query === '' ? ($range === 'all' ? 'Belum ada pembayaran lunas atau refund.' : 'Belum ada pembayaran lunas atau refund pada tanggal ini.') : 'Pembayaran lunas atau refund yang cocok tidak ditemukan.' ?></td></tr>
           <?php else: foreach ($reservations as $reservation):
             $cancelled = $reservation['reservation_status'] === 'inactive';
             $paymentStatus = $reservation['payment_status'];
@@ -261,15 +264,51 @@ $adminPageScript = '../assets/js/admin-reservations.js';
               <td class="px-4 py-4"><p class="font-semibold text-slate-900"><?= $escape($reservation['full_name']) ?></p><p class="text-xs text-slate-500">Reservasi #<?= (int) $reservation['reservation_id'] ?><?= $cancelled ? ' · Dibatalkan' : '' ?></p></td>
               <td class="px-4 py-4 font-mono text-xs text-slate-600"><?= $escape($reservation['phone_number']) ?></td>
               <td class="px-4 py-4 font-medium"><?= $escape($reservation['service_name']) ?></td>
-              <td class="px-4 py-4"><p><?= $escape((new DateTimeImmutable((string) $reservation['slot_date'], $timezone))->format('d/m/Y')) ?></p><p class="text-xs text-slate-500"><?= $escape(substr((string) $reservation['start_time'], 0, 5)) ?>–<?= $escape(substr((string) $reservation['end_time'], 0, 5)) ?> WIB</p></td>
+              <?php $reservationStart = new DateTimeImmutable((string) $reservation['slot_date'] . ' ' . (string) $reservation['start_time'], $timezone); ?>
+              <td class="px-4 py-4"><p><?= $escape($reservationStart->format('d/m/Y')) ?></p><p class="text-xs text-slate-500"><?= $escape(substr((string) $reservation['start_time'], 0, 5)) ?>–<?= $escape(substr((string) $reservation['end_time'], 0, 5)) ?> WIB</p></td>
               <td class="px-4 py-4"><span class="rounded-full px-3 py-1 text-xs font-semibold <?= $paymentClass ?>"><?= $escape($paymentLabel) ?></span><?php if (!empty($reservation['payment_type'])): ?><p class="mt-1 text-xs text-slate-500"><?= $escape($reservation['payment_type']) ?></p><?php endif; ?></td>
               <td class="px-4 py-4 text-right font-semibold">Rp <?= number_format((float) $reservation['total_payment'], 0, ',', '.') ?></td>
+              <td class="px-4 py-4 text-right">
+                <?php if (!$cancelled && $paymentStatus === 'paid' && $reservationStart > $now): ?>
+                  <button type="button" class="open-reschedule rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100" data-reservation-id="<?= (int) $reservation['reservation_id'] ?>" data-customer="<?= $escape($reservation['full_name']) ?>" data-current="<?= $escape($reservationStart->format('d/m/Y H:i')) ?>">Ganti jadwal</button>
+                <?php else: ?>
+                  <span class="text-xs text-slate-300">—</span>
+                <?php endif; ?>
+              </td>
             </tr>
           <?php endforeach; endif; ?>
         </tbody>
       </table>
     </div>
   </section>
+
+  <input id="admin-reservations-csrf" type="hidden" value="<?= $escape($csrfToken) ?>">
+  <dialog id="reschedule-dialog" class="w-[min(94vw,32rem)] rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/40">
+    <form id="reschedule-form" class="space-y-5 p-6">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-emerald-800">Penanganan reservasi</p>
+        <h2 class="mt-1 text-xl font-bold">Ganti jadwal</h2>
+        <p id="reschedule-customer" class="mt-2 text-sm text-slate-600"></p>
+        <p id="reschedule-current" class="text-sm text-slate-500"></p>
+      </div>
+      <input id="reschedule-id" type="hidden">
+      <label class="block text-sm font-semibold">Tanggal baru
+        <input id="reschedule-date" type="date" required min="<?= $escape($today->format('Y-m-d')) ?>" class="mt-2 block w-full rounded-xl border border-slate-200 px-3 py-3 font-normal">
+      </label>
+      <label class="block text-sm font-semibold">Slot yang tersedia
+        <select id="reschedule-slot" required disabled class="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 font-normal"><option value="">Pilih tanggal terlebih dahulu</option></select>
+      </label>
+      <label class="block text-sm font-semibold">Catatan kendala
+        <input id="reschedule-reason" maxlength="500" value="Kendala operasional" class="mt-2 block w-full rounded-xl border border-slate-200 px-3 py-3 font-normal">
+      </label>
+      <label class="flex items-start gap-3 text-sm text-slate-700"><input id="reschedule-consent" type="checkbox" required class="mt-1 accent-[#0d3b36]">Saya sudah menghubungi pelanggan dan pelanggan menyetujui jadwal baru ini.</label>
+      <p id="reschedule-message" role="status" aria-live="polite" class="hidden rounded-xl px-4 py-3 text-sm"></p>
+      <div class="flex justify-end gap-3">
+        <button type="button" id="close-reschedule" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Kembali</button>
+        <button id="submit-reschedule" type="submit" disabled class="rounded-xl bg-[#0d3b36] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Pindahkan reservasi</button>
+      </div>
+    </form>
+  </dialog>
 </main>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
