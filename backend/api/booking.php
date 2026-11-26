@@ -11,11 +11,7 @@ header('Cache-Control: no-store');
 header('Content-Type: application/json; charset=UTF-8');
 
 
-/*
-|--------------------------------------------------------------------------
-| JSON response helper
-|--------------------------------------------------------------------------
-*/
+// JSON response helper
 
 function bookingApiResponse(int $status, array $payload): never
 {
@@ -25,11 +21,7 @@ function bookingApiResponse(int $status, array $payload): never
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Request body helper
-|--------------------------------------------------------------------------
-*/
+// Request body helper
 
 function bookingReadJsonBody(): array
 {
@@ -61,11 +53,7 @@ function bookingReadJsonBody(): array
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Validate date
-|--------------------------------------------------------------------------
-*/
+// Validate date
 
 function bookingValidateDate(string $date): bool
 {
@@ -80,11 +68,7 @@ function bookingValidateDate(string $date): bool
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Get customer ID
-|--------------------------------------------------------------------------
-*/
+// Get customer ID
 
 $userId = filter_var(
     $_SESSION['user_id'] ?? null,
@@ -99,15 +83,9 @@ if (!$userId || $userId < 1) {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| GET: Availability
-|--------------------------------------------------------------------------
-|
-| Example:
-| GET /backend/api/booking.php?date=2026-11-14
-|
-*/
+// GET: Availability
+// Example:
+// GET /backend/api/booking.php?date=2026-11-14
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
@@ -231,11 +209,7 @@ if ($method === 'GET') {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Only POST is allowed for booking actions
-|--------------------------------------------------------------------------
-*/
+// Only POST is allowed for booking actions
 
 if ($method !== 'POST') {
 
@@ -248,11 +222,7 @@ if ($method !== 'POST') {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Read POST body and validate CSRF
-|--------------------------------------------------------------------------
-*/
+// Read POST body and validate CSRF
 
 try {
 
@@ -272,11 +242,7 @@ try {
 $action = trim((string) ($body['action'] ?? ''));
 
 
-/*
-|--------------------------------------------------------------------------
-| POST: Retrieve customer's existing active booking hold
-|--------------------------------------------------------------------------
-*/
+// POST: Retrieve customer's existing active booking hold
 
 if ($action === 'get_active_hold') {
 
@@ -373,21 +339,14 @@ if ($action === 'get_active_hold') {
 
 
 
-/*
-|--------------------------------------------------------------------------
-| POST: Create temporary booking hold
-|--------------------------------------------------------------------------
-|
-| Required JSON:
-|
-| {
-|   "action": "create_hold",
-|   "slot_id": 1,
-|   "service_id": 1,
-|   "additional_service_id": null
-| }
-|
-*/
+// POST: Create temporary booking hold
+// Required JSON:
+// {
+// "action": "create_hold",
+// "slot_id": 1,
+// "service_id": 1,
+// "additional_service_id": null
+// }
 
 if ($action === 'create_hold') {
 
@@ -720,19 +679,12 @@ if ($action === 'create_hold') {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| POST: Release temporary booking hold
-|--------------------------------------------------------------------------
-|
-| Required JSON:
-|
-| {
-|   "action": "release_hold",
-|   "hold_token": "..."
-| }
-|
-*/
+// POST: Release temporary booking hold
+// Required JSON:
+// {
+// "action": "release_hold",
+// "hold_token": "..."
+// }
 
 if ($action === 'release_hold') {
 
@@ -854,11 +806,7 @@ if ($action === 'release_hold') {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Unknown action
-|--------------------------------------------------------------------------
-*/
+// Unknown action
 
 bookingApiResponse(400, [
     'success' => false,
@@ -866,11 +814,7 @@ bookingApiResponse(400, [
 ]);
 
 
-/*
-|--------------------------------------------------------------------------
-| Retrieve and lock a time slot
-|--------------------------------------------------------------------------
-*/
+// Retrieve and lock a time slot
 
 function getBookingSlotForUpdate(PDO $pdo, int $slotId): ?array
 {
