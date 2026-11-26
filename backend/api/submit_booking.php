@@ -50,7 +50,7 @@ try {
     } elseif (!$slot || !isBookableHourlySlot($slot) || $slot['is_available'] !== 'available' || !$capacity || $capacity['available_count'] <= 0 || $slotStart <= new DateTimeImmutable('now', $timezone)) {
         echo json_encode(['status' => 'error', 'message' => 'Slot yang dipilih tidak tersedia lagi. Pilih waktu lain.']);
     } else {
-        // Berhasil! Simpan draft ke session dan beritahu frontend untuk redirect
+        // Save the draft in the session and tell the frontend to redirect.
         $_SESSION['booking_draft'] = [
             'service_id' => (int) $serviceId,
             'slot_id' => (int) $slotId,
