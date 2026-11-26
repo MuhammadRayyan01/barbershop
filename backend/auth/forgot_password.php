@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/load_env.php';
+require_once __DIR__ . '/../config/mailer.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST');
@@ -40,20 +41,23 @@ try {
 
             $baseUrl = rtrim((string) (getenv('APP_BASE_URL') ?: ''), '/');
             if ($baseUrl === '') {
-                $host = $_SERVER['HTTP_HOST'] ?? '';
+                $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
                 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                $baseUrl = $host !== '' ? $scheme . '://' . $host : '';
+                if (preg_match('/^[a-zA-Z0-9.-]+(?::[0-9]{1,5})?$/', $host) === 1) {
+                    $baseUrl = $scheme . '://' . $host;
+                }
+            }
+            if ($baseUrl === '' || filter_var($baseUrl, FILTER_VALIDATE_URL) === false || !in_array((string) parse_url($baseUrl, PHP_URL_SCHEME), ['http', 'https'], true)) {
+                $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = :user_id')->execute(['user_id' => $user['user_id']]);
+                jsonResponse(500, ['success' => false, 'message' => 'Tautan reset belum dapat dibuat. Periksa konfigurasi alamat aplikasi.']);
             }
             $resetUrl = $baseUrl . '/user/forgot-password.php?token=' . rawurlencode($token);
             $subject = 'Atur ulang kata sandi Pemon Barbershop';
             $message = "Kami menerima permintaan untuk mengatur ulang kata sandi Anda. Buka tautan berikut dalam satu jam:\n\n{$resetUrl}\n\nJika Anda tidak meminta ini, abaikan email ini.";
-            $from = (string) (getenv('MAIL_FROM') ?: '');
-            $headers = "Content-Type: text/plain; charset=UTF-8\r\n";
-            if ($from !== '' && filter_var($from, FILTER_VALIDATE_EMAIL)) {
-                $headers .= 'From: Pemon Barbershop <' . $from . ">\r\n";
-            }
-            if ($baseUrl !== '' && !mail((string) $user['email'], $subject, $message, $headers)) {
+            if (!sendApplicationEmail((string) $user['email'], $subject, $message)) {
+                $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = :user_id')->execute(['user_id' => $user['user_id']]);
                 error_log('Password reset email could not be sent for user ' . (int) $user['user_id']);
+                jsonResponse(503, ['success' => false, 'message' => 'Email belum dapat dikirim. Periksa konfigurasi SMTP lalu coba lagi.']);
             }
         }
         jsonResponse(200, ['success' => true, 'message' => 'Jika email terdaftar, tautan pengaturan ulang akan dikirim. Periksa kotak masuk Anda.']);
@@ -88,5 +92,11 @@ try {
 } catch (Throwable $error) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     error_log('Password reset error: ' . $error->getMessage());
+    if ($error instanceof PDOException && $error->getCode() === '42P01' && str_contains($error->getMessage(), 'password_reset_tokens')) {
+        jsonResponse(503, [
+            'success' => false,
+            'message' => 'Fitur reset kata sandi belum siap. Administrator perlu menerapkan migrasi database terlebih dahulu.'
+        ]);
+    }
     jsonResponse(500, ['success' => false, 'message' => 'Permintaan tidak dapat diproses saat ini.']);
 }
