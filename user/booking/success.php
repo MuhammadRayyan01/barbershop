@@ -93,6 +93,11 @@ require_once __DIR__ . '/../../includes/header.php';
                     <dd id="booking-service" class="mt-1 font-semibold">-</dd>
                 </div>
 
+                <div id="booking-additional-service-row" class="hidden">
+                    <dt class="text-xs text-gray-500">Layanan tambahan</dt>
+                    <dd id="booking-additional-service" class="mt-1 font-semibold">-</dd>
+                </div>
+
                 <div>
                     <dt class="text-xs text-gray-500">Nama pemesan</dt>
                     <dd id="booking-name" class="mt-1 font-semibold">-</dd>

@@ -118,6 +118,14 @@
             document.getElementById('confirm-total').textContent =
                 formatCurrency(data.total_payment);
 
+            const messageRow = document.getElementById('confirm-message-row');
+            if (data.customer_message) {
+                document.getElementById('confirm-message').textContent = data.customer_message;
+                messageRow.classList.remove('hidden');
+            } else {
+                messageRow.classList.add('hidden');
+            }
+
             loading.classList.add('hidden');
             content.classList.remove('hidden');
 

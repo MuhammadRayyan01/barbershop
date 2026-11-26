@@ -322,6 +322,7 @@ function finalizeVerifiedMidtransPayment(
                 service_price,
                 additional_service_id,
                 additional_service_price,
+                customer_message,
                 reservation_status,
                 created_at,
                 updated_at
@@ -333,6 +334,7 @@ function finalizeVerifiedMidtransPayment(
                 :service_price,
                 :additional_service_id,
                 :additional_service_price,
+                :customer_message,
                 'active',
                 CURRENT_TIMESTAMP,
                 CURRENT_TIMESTAMP
@@ -346,7 +348,8 @@ function finalizeVerifiedMidtransPayment(
             ':service_id' => $hold['service_id'],
             ':service_price' => $hold['service_price'],
             ':additional_service_id' => $hold['additional_service_id'],
-            ':additional_service_price' => $hold['additional_service_price']
+            ':additional_service_price' => $hold['additional_service_price'],
+            ':customer_message' => $hold['customer_message']
         ]);
 
         $reservationId = (int) $reservationStmt->fetchColumn();

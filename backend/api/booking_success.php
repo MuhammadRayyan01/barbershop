@@ -46,6 +46,7 @@ try {
                 r.reservation_id,
                 r.reservation_status::text AS reservation_status,
                 s.service_name,
+                ads.additional_service_name,
                 ts.slot_date,
                 ts.start_time,
                 ts.end_time,
@@ -61,6 +62,8 @@ try {
                 ON u.user_id = r.user_id
             JOIN service s
                 ON s.service_id = r.service_id
+            LEFT JOIN additional_service ads
+                ON ads.additional_service_id = r.additional_service_id
             JOIN time_slot ts
                 ON ts.slot_id = r.slot_id
             JOIN invoice i
@@ -81,6 +84,7 @@ try {
                 r.reservation_id,
                 r.reservation_status::text AS reservation_status,
                 s.service_name,
+                ads.additional_service_name,
                 ts.slot_date,
                 ts.start_time,
                 ts.end_time,
@@ -96,6 +100,8 @@ try {
                 ON u.user_id = r.user_id
             JOIN service s
                 ON s.service_id = r.service_id
+            LEFT JOIN additional_service ads
+                ON ads.additional_service_id = r.additional_service_id
             JOIN time_slot ts
                 ON ts.slot_id = r.slot_id
             JOIN invoice i

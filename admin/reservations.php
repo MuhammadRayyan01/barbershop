@@ -6,8 +6,9 @@ $timezone = new DateTimeZone('Asia/Jakarta');
 $today = new DateTimeImmutable('today', $timezone);
 $now = new DateTimeImmutable('now', $timezone);
 $csrfToken = getCsrfToken();
-$range = $_GET['range'] ?? 'day';
-if (!in_array($range, ['day', 'all'], true)) $range = 'day';
+$range = $_GET['range'] ?? '30';
+$validRanges = ['day', '7', '30', '90', 'custom', 'all'];
+if (!in_array($range, $validRanges, true)) $range = '30';
 $date = $_GET['date'] ?? $today->format('Y-m-d');
 $parseDate = static function ($value) use ($timezone) {
     if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) return false;
@@ -129,6 +130,7 @@ try {
             OR u.full_name ILIKE :name_partial
             OR to_tsvector('simple', COALESCE(s.service_name, '') || ' ' || COALESCE(s.description, '')) @@ websearch_to_tsquery('simple', :service_search)
             OR s.service_name ILIKE :service_partial
+            OR COALESCE(ads.additional_service_name, '') ILIKE :additional_service_partial
             OR u.phone_number ILIKE :phone_query
             OR CAST(r.reservation_id AS text) = :id_query
         )";
@@ -137,6 +139,7 @@ try {
             'name_partial' => '%' . $query . '%',
             'service_search' => $query,
             'service_partial' => '%' . $query . '%',
+            'additional_service_partial' => '%' . $query . '%',
             'phone_query' => '%' . $query . '%',
             'id_query' => $query,
         ];
@@ -146,6 +149,7 @@ try {
         JOIN users u ON u.user_id = r.user_id
         JOIN service s ON s.service_id = r.service_id
         JOIN time_slot ts ON ts.slot_id = r.slot_id
+        LEFT JOIN additional_service ads ON ads.additional_service_id = r.additional_service_id
         JOIN payment p ON p.reservation_id = r.reservation_id";
     $countStmt = $pdo->prepare("SELECT COUNT(*) $joins WHERE $whereSql");
     $countStmt->execute($params);
@@ -155,7 +159,7 @@ try {
     $page = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
     $page = min($page, $totalPages);
     $stmt = $pdo->prepare("SELECT r.reservation_id, r.reservation_status, u.full_name,
-            u.phone_number, s.service_name, ts.slot_date, ts.start_time, ts.end_time,
+            u.phone_number, s.service_name, ads.additional_service_name, ts.slot_date, ts.start_time, ts.end_time,
             COALESCE(i.total_payment, r.service_price, 0) AS total_payment,
             p.payment_status, p.payment_type
         $joins
@@ -214,6 +218,7 @@ try {
         JOIN users u ON u.user_id = r.user_id
         JOIN service s ON s.service_id = r.service_id
         JOIN time_slot ts ON ts.slot_id = r.slot_id
+        LEFT JOIN additional_service ads ON ads.additional_service_id = r.additional_service_id
         JOIN payment p ON p.reservation_id = r.reservation_id
         LEFT JOIN invoice i ON i.reservation_id = r.reservation_id
         WHERE r.reservation_status = 'active' AND p.payment_status = 'paid' AND p.refund_status = 'not_requested' AND $operationWhere";
@@ -223,7 +228,8 @@ try {
     $operationTotalPages = max(1, (int) ceil($operationTotal / $operationPerPage));
     $operationPage = min($operationPage, $operationTotalPages);
     $operationStmt = $pdo->prepare("SELECT r.reservation_id, r.reservation_status, u.full_name,
-            u.phone_number, s.service_name, ts.slot_date, ts.start_time, ts.end_time,
+            u.phone_number, s.service_name, ads.additional_service_name, ts.slot_date, ts.start_time, ts.end_time,
+            r.customer_message,
             COALESCE(i.total_payment, p.amount, 0) AS total_payment,
             p.payment_type
         $operationBase
@@ -351,8 +357,8 @@ $adminPageScript = '../assets/js/admin-reservations.js';
               $operationDateLabel = $operationStart->format('d/m/Y');
             ?>
               <tr class="hover:bg-slate-50">
-                <td class="px-4 py-4"><p class="font-semibold"><?= $escape($operationReservation['full_name']) ?></p><p class="text-xs text-slate-500">#<?= (int) $operationReservation['reservation_id'] ?> · <?= $escape($operationReservation['phone_number']) ?></p></td>
-                <td class="px-4 py-4"><?= $escape($operationReservation['service_name']) ?></td>
+                <td class="px-4 py-4"><p class="font-semibold"><?= $escape($operationReservation['full_name']) ?></p><p class="text-xs text-slate-500">#<?= (int) $operationReservation['reservation_id'] ?> · <?= $escape($operationReservation['phone_number']) ?></p><?php if (!empty($operationReservation['customer_message'])): ?><p class="mt-2 max-w-xs whitespace-pre-wrap rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900"><span class="font-semibold">Pesan:</span> <?= $escape($operationReservation['customer_message']) ?></p><?php endif; ?></td>
+                <td class="px-4 py-4"><?= $escape($operationReservation['service_name']) ?><?php if (!empty($operationReservation['additional_service_name'])): ?><p class="mt-1 text-xs text-slate-500">+ <?= $escape($operationReservation['additional_service_name']) ?></p><?php endif; ?></td>
                 <td class="px-4 py-4"><p><?= $escape($operationDateLabel) ?></p><p class="text-xs text-slate-500"><?= $escape(substr((string) $operationReservation['start_time'], 0, 5)) ?>–<?= $escape(substr((string) $operationReservation['end_time'], 0, 5)) ?> WIB</p></td>
                 <td class="px-4 py-4"><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">Lunas</span><p class="mt-1 text-xs text-slate-500"><?= $escape($operationReservation['payment_type'] ?? '') ?></p></td>
                 <td class="px-4 py-4 text-right font-semibold">Rp <?= number_format((float) $operationReservation['total_payment'], 0, ',', '.') ?></td>
@@ -520,7 +526,7 @@ $adminPageScript = '../assets/js/admin-reservations.js';
             <tr class="<?= $cancelled ? 'bg-red-50/40' : 'hover:bg-slate-50' ?>">
               <td class="px-4 py-4"><p class="font-semibold text-slate-900"><?= $escape($reservation['full_name']) ?></p><p class="text-xs text-slate-500">Reservasi #<?= (int) $reservation['reservation_id'] ?><?= $cancelled ? ' · Dibatalkan' : '' ?></p></td>
               <td class="px-4 py-4 font-mono text-xs text-slate-600"><?= $escape($reservation['phone_number']) ?></td>
-              <td class="px-4 py-4 font-medium"><?= $escape($reservation['service_name']) ?></td>
+              <td class="px-4 py-4 font-medium"><?= $escape($reservation['service_name']) ?><?php if (!empty($reservation['additional_service_name'])): ?><p class="mt-1 text-xs font-normal text-slate-500">+ <?= $escape($reservation['additional_service_name']) ?></p><?php endif; ?></td>
               <?php $reservationStart = new DateTimeImmutable((string) $reservation['slot_date'] . ' ' . (string) $reservation['start_time'], $timezone); ?>
               <td class="px-4 py-4"><p><?= $escape($reservationStart->format('d/m/Y')) ?></p><p class="text-xs text-slate-500"><?= $escape(substr((string) $reservation['start_time'], 0, 5)) ?>–<?= $escape(substr((string) $reservation['end_time'], 0, 5)) ?> WIB</p></td>
               <td class="px-4 py-4"><span class="rounded-full px-3 py-1 text-xs font-semibold <?= $paymentClass ?>"><?= $escape($paymentLabel) ?></span><?php if (!empty($reservation['payment_type'])): ?><p class="mt-1 text-xs text-slate-500"><?= $escape($reservation['payment_type']) ?></p><?php endif; ?></td>

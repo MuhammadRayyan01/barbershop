@@ -16,13 +16,14 @@ if (!$reservationId) {
     try {
         $stmt = $pdo->prepare("SELECT r.reservation_id, r.reservation_status::text AS reservation_status,
                 r.service_price, r.additional_service_price, u.full_name, u.phone_number,
-                s.service_name, ts.slot_date, ts.start_time, ts.end_time,
+                s.service_name, ads.additional_service_name, ts.slot_date, ts.start_time, ts.end_time,
                 i.invoice_id, i.total_payment, i.created_at AS invoice_created_at,
                 p.payment_status::text AS payment_status, p.payment_type, p.transaction_reference
             FROM reservation r
             JOIN users u ON u.user_id = r.user_id
             JOIN service s ON s.service_id = r.service_id
             JOIN time_slot ts ON ts.slot_id = r.slot_id
+            LEFT JOIN additional_service ads ON ads.additional_service_id = r.additional_service_id
             JOIN invoice i ON i.reservation_id = r.reservation_id
             LEFT JOIN payment p ON p.reservation_id = r.reservation_id
             WHERE r.reservation_id = :reservation_id AND r.user_id = :user_id");
@@ -102,7 +103,7 @@ $date = $reservation ? new DateTimeImmutable((string) $reservation['slot_date'],
       <div class="space-y-3 text-sm">
         <div class="flex justify-between gap-4"><span class="text-gray-500">Layanan</span><span class="text-right font-medium"><?= $escape($reservation['service_name']) ?></span></div>
         <?php if ($reservation['additional_service_price'] !== null && (float) $reservation['additional_service_price'] > 0): ?>
-          <div class="flex justify-between gap-4"><span class="text-gray-500">Layanan tambahan</span><span class="font-medium">Rp <?= number_format((float) $reservation['additional_service_price'], 0, ',', '.') ?></span></div>
+          <div class="flex justify-between gap-4"><span class="text-gray-500">Layanan tambahan<?= !empty($reservation['additional_service_name']) ? ' · ' . $escape($reservation['additional_service_name']) : '' ?></span><span class="font-medium">Rp <?= number_format((float) $reservation['additional_service_price'], 0, ',', '.') ?></span></div>
         <?php endif; ?>
         <div class="flex justify-between gap-4 border-t border-gray-200 pt-3 font-bold"><span>Total</span><span>Rp <?= number_format((float) $reservation['total_payment'], 0, ',', '.') ?></span></div>
         <div class="flex justify-between gap-4"><span class="text-gray-500">Status pembayaran</span><span class="text-right font-semibold"><?= $escape($paymentLabel) ?></span></div>

@@ -222,6 +222,7 @@ CREATE TABLE public.booking_hold (
     service_price numeric(10,2) NOT NULL,
     additional_service_id integer,
     additional_service_price numeric(10,2),
+    customer_message character varying(500),
     total_amount numeric(10,2) NOT NULL,
     hold_status character varying(20) DEFAULT 'active'::character varying NOT NULL,
     expires_at timestamp with time zone NOT NULL,
@@ -300,6 +301,11 @@ CREATE TABLE public.payment (
     amount numeric(10,2) NOT NULL,
     transaction_reference character varying(255),
     refund_method character varying(20) DEFAULT 'gateway'::character varying NOT NULL,
+    refund_status character varying(20) DEFAULT 'not_requested'::character varying NOT NULL,
+    refund_key character varying(255),
+    refund_reason text,
+    refund_requested_at timestamp without time zone,
+    refunded_at timestamp without time zone,
     admin_cancel_outcome character varying(32),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -309,6 +315,10 @@ CREATE TABLE public.payment (
 ALTER TABLE ONLY public.payment
     ADD CONSTRAINT payment_refund_method_check
     CHECK (((refund_method)::text = ANY ((ARRAY['gateway'::character varying, 'manual'::character varying])::text[])));
+
+ALTER TABLE ONLY public.payment
+    ADD CONSTRAINT payment_refund_status_check
+    CHECK (((refund_status)::text = ANY ((ARRAY['not_requested'::character varying, 'pending'::character varying, 'completed'::character varying, 'failed'::character varying])::text[])));
 
 ALTER TABLE ONLY public.payment
     ADD CONSTRAINT payment_admin_cancel_outcome_check
@@ -347,6 +357,7 @@ CREATE TABLE public.reservation (
     service_price numeric(10,2),
     additional_service_id integer,
     additional_service_price numeric(10,2),
+    customer_message character varying(500),
     reservation_status public.res_status DEFAULT 'active'::public.res_status NOT NULL,
     admin_cancelled_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,

@@ -69,6 +69,11 @@ require __DIR__ . '/../../includes/header.php';
                     <dd id="confirm-time" class="mt-1 font-semibold"></dd>
                 </div>
 
+                <div id="confirm-message-row" class="hidden sm:col-span-2">
+                    <dt class="text-xs text-gray-500">Pesan untuk barber</dt>
+                    <dd id="confirm-message" class="mt-1 whitespace-pre-wrap text-sm"></dd>
+                </div>
+
                 <div>
                     <dt class="text-xs text-gray-500">Total pembayaran</dt>
                     <dd id="confirm-total" class="mt-1 font-bold"></dd>

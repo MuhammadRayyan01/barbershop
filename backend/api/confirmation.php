@@ -52,6 +52,7 @@ try {
             bh.service_price,
             bh.additional_service_id,
             bh.additional_service_price,
+            bh.customer_message,
             bh.total_amount,
             bh.hold_status,
             bh.expires_at,
@@ -125,6 +126,7 @@ try {
                 ? (float) $hold['additional_service_price']
                 : null,
 
+            'customer_message' => $hold['customer_message'] ?? '',
             'customer_name' => $hold['customer_name'],
             'phone_number' => $hold['phone_number'],
 

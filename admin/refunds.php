@@ -59,6 +59,7 @@ try {
         $where[] = "(
             to_tsvector('simple', COALESCE(i.customer_name, '')) @@ websearch_to_tsquery('simple', :customer_search)
             OR to_tsvector('simple', COALESCE(s.service_name, '') || ' ' || COALESCE(s.description, '')) @@ websearch_to_tsquery('simple', :service_search)
+            OR COALESCE(ads.additional_service_name, '') ILIKE :additional_search
             OR i.phone_number ILIKE :phone_query
             OR CAST(i.invoice_id AS text) = :invoice_id
             OR CAST(r.reservation_id AS text) = :reservation_id
@@ -66,19 +67,21 @@ try {
         $params += [
             'customer_search' => $query,
             'service_search' => $query,
+            'additional_search' => '%' . $query . '%',
             'phone_query' => '%' . $query . '%',
             'invoice_id' => $query,
             'reservation_id' => $query,
         ];
     }
     $stmt = $pdo->prepare("SELECT r.reservation_id, i.invoice_id, i.customer_name, i.phone_number,
-            s.service_name, i.total_payment, i.created_at, p.payment_status,
+            s.service_name, ads.additional_service_name, i.total_payment, i.created_at, p.payment_status,
             CASE WHEN p.payment_status = 'refunded' THEN 'refunded'
                  WHEN p.payment_status = 'paid' THEN 'waiting'
                  ELSE 'void' END AS state
         FROM reservation r
         JOIN invoice i ON i.reservation_id = r.reservation_id
         JOIN service s ON s.service_id = r.service_id
+        LEFT JOIN additional_service ads ON ads.additional_service_id = r.additional_service_id
         LEFT JOIN payment p ON p.reservation_id = r.reservation_id
         WHERE " . implode(' AND ', $where) . ' ORDER BY i.created_at DESC');
     $stmt->execute($params);
@@ -95,9 +98,9 @@ if (($_GET['export'] ?? '') === 'csv') {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="refund-history.csv"');
     $output = fopen('php://output', 'wb');
-    fputcsv($output, ['Invoice ID', 'Reservation ID', 'Customer', 'Phone', 'Service', 'Total', 'Refund Status']);
+    fputcsv($output, ['Invoice ID', 'Reservation ID', 'Customer', 'Phone', 'Service', 'Additional service', 'Total', 'Refund Status']);
     foreach ($refunds as $refund) {
-        fputcsv($output, [$refund['invoice_id'], $refund['reservation_id'], $refund['customer_name'], $refund['phone_number'], $refund['service_name'], $refund['total_payment'], $refund['state']]);
+        fputcsv($output, [$refund['invoice_id'], $refund['reservation_id'], $refund['customer_name'], $refund['phone_number'], $refund['service_name'], $refund['additional_service_name'] ?? '', $refund['total_payment'], $refund['state']]);
     }
     fclose($output);
     exit;
@@ -174,7 +177,7 @@ $adminPageScript = '../assets/js/refunds.js';
               <tr class="refund-row hover:bg-slate-50" data-id="<?= (int) $refund['reservation_id'] ?>" data-name="<?= $escape($refund['customer_name']) ?>" data-phone="<?= $escape($refund['phone_number']) ?>" data-service="<?= $escape($refund['service_name']) ?>" data-invoice="INV-<?= str_pad((string) $refund['invoice_id'], 6, '0', STR_PAD_LEFT) ?>" data-price="<?= $escape($refund['total_payment']) ?>" data-state="<?= $escape($stateLabels[$refund['state']]) ?>">
                 <td class="px-4 py-4 text-slate-500"><?= $index + 1 ?></td>
                 <td class="px-4 py-4"><p class="font-bold"><?= $escape($refund['customer_name']) ?></p><p class="text-xs text-slate-500"><?= $escape($refund['phone_number']) ?> <span class="ml-2">&bull; INV-<?= str_pad((string) $refund['invoice_id'], 6, '0', STR_PAD_LEFT) ?></span></p></td>
-                <td class="px-4 py-4"><p class="font-bold"><?= $escape($refund['service_name']) ?></p><p class="text-xs text-slate-500">Reservasi #<?= (int) $refund['reservation_id'] ?></p></td>
+                <td class="px-4 py-4"><p class="font-bold"><?= $escape($refund['service_name']) ?></p><?php if (!empty($refund['additional_service_name'])): ?><p class="text-xs text-slate-500">+ <?= $escape($refund['additional_service_name']) ?></p><?php endif; ?><p class="text-xs text-slate-500">Reservasi #<?= (int) $refund['reservation_id'] ?></p></td>
                 <td class="px-4 py-4 font-bold whitespace-nowrap">Rp <?= number_format((float) $refund['total_payment'], 0, ',', '.') ?></td>
                 <td class="px-4 py-4"><span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold <?= $stateClasses[$refund['state']] ?>"><?= $escape($stateLabels[$refund['state']]) ?></span></td>
                 <td class="px-4 py-4 text-right">

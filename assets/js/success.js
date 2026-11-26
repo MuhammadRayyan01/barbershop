@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const elements = {
         code: document.getElementById('booking-code'),
         service: document.getElementById('booking-service'),
+        additionalServiceRow: document.getElementById('booking-additional-service-row'),
+        additionalService: document.getElementById('booking-additional-service'),
         name: document.getElementById('booking-name'),
         date: document.getElementById('booking-date'),
         time: document.getElementById('booking-time'),
@@ -90,6 +92,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         elements.service.textContent =
             escapeText(reservation.service_name);
+
+        if (reservation.additional_service_name) {
+            elements.additionalService.textContent = reservation.additional_service_name;
+            elements.additionalServiceRow.classList.remove('hidden');
+        } else {
+            elements.additionalServiceRow.classList.add('hidden');
+        }
 
         elements.name.textContent =
             escapeText(reservation.full_name);
