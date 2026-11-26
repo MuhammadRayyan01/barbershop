@@ -26,6 +26,16 @@ if ($method === 'GET') {
     reconcilePendingRefundsForCustomer($pdo, (int) $authenticatedUserId);
 
     try {
+        $query = trim((string) ($_GET['q'] ?? ''));
+        $where = 'r.user_id = :user_id';
+        $params = ['user_id' => $authenticatedUserId];
+        if ($query !== '') {
+            $where .= " AND (s.service_name ILIKE :service_search OR COALESCE(ads.additional_service_name, '') ILIKE :additional_search OR CAST(r.reservation_id AS text) = :reservation_id)";
+            $params['service_search'] = '%' . $query . '%';
+            $params['additional_search'] = '%' . $query . '%';
+            $params['reservation_id'] = $query;
+        }
+
         $stmt = $pdo->prepare("
             SELECT
                 r.reservation_id,
@@ -79,13 +89,11 @@ if ($method === 'GET') {
                 ON i.reservation_id = r.reservation_id
             LEFT JOIN payment p
                 ON p.reservation_id = r.reservation_id
-            WHERE r.user_id = :user_id
-            ORDER BY ts.slot_date DESC, ts.start_time DESC
+            WHERE $where
+            ORDER BY ts.slot_date DESC, ts.start_time DESC, r.reservation_id DESC
         ");
 
-        $stmt->execute([
-            'user_id' => $authenticatedUserId
-        ]);
+        $stmt->execute($params);
 
         jsonResponse(200, [
             'success' => true,
