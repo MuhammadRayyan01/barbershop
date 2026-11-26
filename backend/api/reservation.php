@@ -36,6 +36,30 @@ if ($method === 'GET') {
             $params['reservation_id'] = $query;
         }
 
+        $scheduleTable = $pdo->query("SELECT to_regclass('public.reservation_schedule_change') IS NOT NULL")->fetchColumn();
+        $hasScheduleHistory = in_array(strtolower((string) $scheduleTable), ['1', 't', 'true'], true);
+        $scheduleColumns = $hasScheduleHistory
+            ? 'latest_schedule_change.created_at AS schedule_changed_at,
+                latest_schedule_change.reason AS schedule_change_reason,
+                latest_schedule_change.old_slot_date,
+                latest_schedule_change.old_start_time,'
+            : 'NULL::timestamp AS schedule_changed_at,
+                NULL::text AS schedule_change_reason,
+                NULL::text AS old_slot_date,
+                NULL::text AS old_start_time,';
+        $scheduleJoin = $hasScheduleHistory ? "
+            LEFT JOIN LATERAL (
+                SELECT change.created_at,
+                       change.reason,
+                       old_slot.slot_date::text AS old_slot_date,
+                       TO_CHAR(old_slot.start_time, 'HH24:MI') AS old_start_time
+                FROM reservation_schedule_change change
+                JOIN time_slot old_slot ON old_slot.slot_id = change.old_slot_id
+                WHERE change.reservation_id = r.reservation_id
+                ORDER BY change.created_at DESC, change.schedule_change_id DESC
+                LIMIT 1
+            ) latest_schedule_change ON TRUE" : '';
+
         $stmt = $pdo->prepare("
             SELECT
                 r.reservation_id,
@@ -60,6 +84,7 @@ if ($method === 'GET') {
                 p.admin_cancel_outcome,
                 p.refund_status,
                 p.refund_method,
+                $scheduleColumns
                 CASE
                     WHEN
                         r.reservation_status = 'active'
@@ -89,6 +114,7 @@ if ($method === 'GET') {
                 ON i.reservation_id = r.reservation_id
             LEFT JOIN payment p
                 ON p.reservation_id = r.reservation_id
+            $scheduleJoin
             WHERE $where
             ORDER BY ts.slot_date DESC, ts.start_time DESC, r.reservation_id DESC
         ");
