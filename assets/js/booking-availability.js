@@ -50,11 +50,7 @@
         holdTimer: null
     };
 
-    /*
-    |--------------------------------------------------------------------------
-    | Helpers
-    |--------------------------------------------------------------------------
-    */
+    // Helpers
 
     function getLocalDate() {
         const parts = new Intl.DateTimeFormat('en-CA', {
@@ -291,11 +287,7 @@
         });
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | API request helper
-    |--------------------------------------------------------------------------
-    */
+    // API request helper
 
     async function apiRequest(url, options = {}) {
         const response = await fetch(url, {
@@ -342,11 +334,7 @@
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Existing booking hold panel
-    |--------------------------------------------------------------------------
-    */
+    // Existing booking hold panel
 
     function createHoldPanel() {
         let panel = document.getElementById('active-booking-panel');
@@ -557,11 +545,7 @@
         window.location.href = 'confirmation.php';
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Retrieve existing active hold from backend
-    |--------------------------------------------------------------------------
-    */
+    // Retrieve existing active hold from backend
 
     async function retrieveActiveHold() {
         const payload = await postBookingAction({
@@ -616,11 +600,9 @@
         return true;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Service selection
-    |--------------------------------------------------------------------------
-    */
+
+    // Service selection
+
 
     serviceButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -654,11 +636,9 @@
 
     updateAdditionalServices(state.serviceId);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Retrieve availability
-    |--------------------------------------------------------------------------
-    */
+
+    // Retrieve availability
+
 
     async function loadAvailability() {
         if (!state.date || state.loading) return;
@@ -703,11 +683,7 @@
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Render available time slots
-    |--------------------------------------------------------------------------
-    */
+    // Render available time slots
 
     function renderSlots() {
         timeGroup.replaceChildren();
@@ -820,11 +796,8 @@
         updateSummary();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Time selection
-    |--------------------------------------------------------------------------
-    */
+    //Time selection
+
 
     timeGroup.addEventListener('click', event => {
         const button = event.target.closest('button.time-btn');
@@ -848,11 +821,9 @@
         renderSlots();
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Date selection
-    |--------------------------------------------------------------------------
-    */
+
+    //Date selection
+
 
     dateInput.min = getLocalDate();
 
@@ -878,11 +849,8 @@
         loadAvailability();
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Release existing hold
-    |--------------------------------------------------------------------------
-    */
+    // Release existing hold
+
 
     function confirmReleaseHold() {
         return new Promise(resolve => {
@@ -1006,11 +974,8 @@
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Create five-minute hold
-    |--------------------------------------------------------------------------
-    */
+
+    //Create five-minute hold
 
     async function createBookingHold() {
         if (
@@ -1072,11 +1037,7 @@
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Form submission
-    |--------------------------------------------------------------------------
-    */
+    // Form submission
 
     bookingForm.addEventListener('submit', event => {
         event.preventDefault();
@@ -1089,11 +1050,7 @@
         createBookingHold();
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Initial page setup
-    |--------------------------------------------------------------------------
-    */
+    // Initial page setup
 
     async function initializeBookingPage() {
         dateInput.min = getLocalDate();
@@ -1136,11 +1093,7 @@
         }
     }, REFRESH_INTERVAL);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Browser navigation
-    |--------------------------------------------------------------------------
-    */
+    // Browser navigation
 
     window.addEventListener('pageshow', event => {
         if (event.persisted) {

@@ -21,7 +21,6 @@ $headerBodyClass = $userBodyClass ?? 'min-h-screen bg-[#f4f7f5] p-4 text-[#0d3b3
 $dashboardUrl = $assetPrefix . 'user/dashboard/index.php';
 $scheduleUrl = $assetPrefix . 'user/dashboard/schedule.php';
 $reservationsUrl = $assetPrefix . 'user/dashboard/reservations.php';
-$bookingUrl = $assetPrefix . 'user/booking/booking.php';
 $aboutUrl = $assetPrefix . 'user/dashboard/aboutUs.html';
 $loginUrl = $assetPrefix . 'user/login.php';
 $logoutUrl = $assetPrefix . 'backend/auth/logout.php';
@@ -102,7 +101,8 @@ $headerNavLink = static function (string $key, string $label, string $url) use (
         <h2 id="akun-modal-title" class="text-lg font-bold">Edit Data Profil</h2>
         <div>
           <label for="akun-input-nama" class="text-sm font-semibold">Nama Lengkap</label>
-          <input id="akun-input-nama" type="text" autocomplete="name" class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+          <input id="akun-input-nama" type="text" autocomplete="name" maxlength="255" aria-describedby="akun-nama-hint" class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+          <p id="akun-nama-hint" class="mt-1 text-xs text-gray-500">Gunakan huruf dan spasi saja.</p>
         </div>
         <div>
           <label for="akun-input-hp" class="text-sm font-semibold">Nomor Handphone / WhatsApp</label>

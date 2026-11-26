@@ -1,18 +1,13 @@
 <?php
 declare(strict_types=1);
 
-/*
-|--------------------------------------------------------------------------
-| Midtrans refund reconciliation
-|--------------------------------------------------------------------------
-| A refund is only complete when Midtrans reports a refund record that has
-| OUR refund key, the full payment amount and a non-empty bank_confirmed_at.
-|
-| The notification webhook is the normal way to learn this, but a webhook
-| cannot reach a developer machine and can also be delayed or lost. These
-| helpers run the same checks directly, so the customer pages can finish a
-| refund that the bank has already confirmed.
-*/
+// Midtrans refund reconciliation
+// A refund is only complete when Midtrans reports a refund record that has
+// OUR refund key, the full payment amount and a non-empty bank_confirmed_at.
+// The notification webhook is the normal way to learn this, but a webhook
+// cannot reach a developer machine and can also be delayed or lost. These
+// helpers run the same checks directly, so the customer pages can finish a
+// refund that the bank has already confirmed.
 
 if (!function_exists('midtransNormalizeAmount')) {
     // Normalize monetary values without floating-point arithmetic.

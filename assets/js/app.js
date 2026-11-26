@@ -1,21 +1,20 @@
-// service 
-
+// Service selection.
   function selectService(element) {
-    // Class dasar kartu layanan (persegi: aspect-square). Dipakai di semua kartu.
+    // Base classes for square service cards, used by every service card.
     const kartuDasar = "service-option aspect-square overflow-hidden bg-white p-4 rounded-2xl shadow-sm cursor-pointer transition-all duration-200 flex flex-col justify-between";
 
-    // 1. Ambil semua elemen opsi layanan
+    // 1. Get all service option elements.
     const allServices = document.querySelectorAll('.service-option');
     
-    // 2. Reset semua kartu ke tampilan biasa (border border-gray-200)
+    // 2. Reset every card to its default border style.
     allServices.forEach(card => {
       card.className = kartuDasar + " border border-gray-200 hover:border-[#0d3b36]";
     });
 
-    // 3. Berikan border tebal hijau pada kartu yang baru saja diklik
+    // 3. Add a thick green border to the clicked card.
     element.className = kartuDasar + " border-2 border-[#0d3b36]";
 
-    // 4. Ambil data layanan yang dipilih
+    // 4. Read the selected service details.
     const serviceName = element.getAttribute('data-name');
     const servicePrice = element.getAttribute('data-price');
 
@@ -23,120 +22,120 @@
   }
 
 
-// date and time 
-  // 1. Definisikan Style Tailwind untuk status Aktif dan Tidak Aktif
+// Date and time.
+  // 1. Define Tailwind styles for active and inactive states.
   const DATE_ACTIVE = "bg-[#e8f3ee] border border-[#12372a] text-[#12372a] font-bold";
   const DATE_INACTIVE = "bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100";
 
   const TIME_ACTIVE = "bg-[#12372a] text-white font-bold border border-[#12372a]";
   const TIME_INACTIVE = "bg-white border border-gray-200 text-gray-600 hover:border-[#12372a]";
 
-  // Variabel untuk menyimpan data jadwal yang dipilih
+  // Store the selected schedule.
   let selectedSchedule = {
     date: "Hari Ini, 22 Okt",
     time: "13:00"
   };
 
-  // 2. Mengatur Event Listener untuk Tombol Tanggal
+  // 2. Handle date button clicks.
   const dateButtons = document.querySelectorAll('.date-btn');
   dateButtons.forEach(button => {
     button.addEventListener('click', function() {
-      // Reset semua tombol tanggal ke status tidak aktif
+      // Reset all date buttons to the inactive state.
       dateButtons.forEach(btn => {
         btn.className = `date-btn ${DATE_INACTIVE} px-4 py-2 rounded-full text-xs transition`;
       });
 
-      // Aktifkan tombol yang sedang diklik
+      // Activate the clicked button.
       this.className = `date-btn ${DATE_ACTIVE} px-4 py-2 rounded-full text-xs transition`;
 
-      // Simpan data tanggal yang dipilih
+      // Save the selected date.
       selectedSchedule.date = this.innerText.trim();
 
-      // Perbarui teks ringkasan
+      // Update the summary text.
       updateSummaryText();
     });
   });
 
-  // 3. Mengatur Event Listener untuk Tombol Jam
+  // 3. Handle time button clicks.
   const timeButtons = document.querySelectorAll('.time-btn');
   timeButtons.forEach(button => {
     button.addEventListener('click', function() {
-    // Reset semua tombol jam ke status tidak aktif
+    // Reset all time buttons to the inactive state.
       timeButtons.forEach(btn => {
         btn.className = `time-btn ${TIME_INACTIVE} py-2 rounded-lg text-xs transition`;
       });
 
-      // Aktifkan tombol jam yang sedang diklik
+      // Activate the clicked time button.
       this.className = `time-btn ${TIME_ACTIVE} py-2 rounded-lg text-xs transition`;
 
-      // Simpan data jam yang dipilih
+      // Save the selected time.
       selectedSchedule.time = this.innerText.trim();
 
-      // Perbarui teks ringkasan
+      // Update the summary text.
       updateSummaryText();
     });
   });
 
-  // 4. Fungsi untuk memperbarui teks informasi secara dinamis
+  // 4. Update the schedule summary dynamically.
   function updateSummaryText() {
     const summaryElement = document.getElementById('summary-text');
     summaryElement.innerText = `${selectedSchedule.date} pukul ${selectedSchedule.time} WIB.`;
     
-    // (Opsional) Log data ke console untuk melihat variabel terupdate
+    // Optional: log the updated values to the console.
     console.log("Jadwal Terpilih:", selectedSchedule);
   }
 
 
-  // confirmation page
-  // input name and phone number
-  // Fungsi Validasi Nama Lengkap
+  // Confirmation page.
+  // Name and phone validation.
+  // Validate the full name.
 function validateName() {
   const nameInput = document.getElementById('nama-input');
   const nameCheck = document.getElementById('nama-check');
   
-  // Jika kolom nama tidak kosong (setelah dikurangi spasi kosong)
+  // Show the check mark when the name field is not empty.
   if (nameInput.value.trim().length > 0) {
-    // Ubah centang menjadi warna hijau terang
+    // Make the check mark bright green.
     nameCheck.className = "absolute right-3.5 text-xs text-green-600 font-bold transition-all";
   } else {
-    // Kembalikan ke warna abu-abu redup jika kosong
+    // Restore the muted gray style when the field is empty.
     nameCheck.className = "absolute right-3.5 text-xs text-gray-300 font-bold transition-all";
   }
 }
 
-// Fungsi Validasi Nomor WhatsApp
+// Validate the WhatsApp number.
 function validatePhone() {
   const phoneInput = document.getElementById('wa-input');
   const phoneCheck = document.getElementById('wa-check');
   
-  // Contoh validasi sederhana: minimal panjang nomor 9 digit
+  // Require at least nine digits.
   if (phoneInput.value.trim().length >= 9) {
-    // Ubah centang menjadi warna hijau terang
+    // Make the check mark bright green.
     phoneCheck.className = "absolute right-3.5 text-xs text-green-600 font-bold transition-all";
   } else {
-    // Kembalikan ke abu-abu jika belum memenuhi syarat panjang karakter
+    // Restore gray when the number is too short.
     phoneCheck.className = "absolute right-3.5 text-xs text-gray-300 font-bold transition-all";
   }
 }
-  // Fungsi untuk Memilih Metode Pembayaran di Halaman 3
+// Select a payment method on step three.
 function selectPayment(element) {
   const allPaymentCards = document.querySelectorAll('.payment-card');
   
-  // 1. Reset semua kartu pembayaran ke status tidak aktif (border biasa)
+  // 1. Reset all payment cards to the inactive border style.
   allPaymentCards.forEach(card => {
     card.className = "payment-card border border-gray-200 hover:border-gray-300 bg-white p-3.5 rounded-xl flex items-start gap-3 cursor-pointer transition-all";
     
-    // Matikan centang radio button pada kartu lain
+    // Clear the radio button on every other card.
     const radio = card.querySelector('input[type="radio"]');
     if (radio) {
       radio.checked = false;
     }
   });
 
-  // 2. Aktifkan kartu pembayaran yang sedang diklik (border tebal & latar hijau muda)
+  // 2. Highlight the clicked payment card.
   element.className = "payment-card border-2 border-[#12372a] bg-[#fcfdfe] p-3.5 rounded-xl flex items-start gap-3 cursor-pointer transition-all";
   
-  // Berikan centang pada radio button di kartu yang diklik
+  // Select the radio button on the clicked card.
   const activeRadio = element.querySelector('input[type="radio"]');
   if (activeRadio) {
     activeRadio.checked = true;
@@ -145,14 +144,8 @@ function selectPayment(element) {
   console.log("Metode pembayaran dipilih");
 }
 
-// ============================================================
-// AKUN: dipakai SEMUA halaman pelanggan lewat includes/header.php
-// - dropdown akun
-// - data profil dari backend/api/profile.php
-// - pop-up Edit Profil (nama, HP, email, ganti password)
-// - pop-up konfirmasi Keluar (logout memakai <form method="post"> biasa)
-// Dibungkus IIFE supaya tidak bentrok dengan variabel di file JS lain.
-// ============================================================
+// Shared customer account menu, profile editor, and logout dialog.
+// Keep these helpers scoped to avoid conflicts with page scripts.
 (() => {
   'use strict';
 
@@ -170,7 +163,7 @@ function selectPayment(element) {
   const changeListeners = [];
   const errorListeners = [];
 
-  // API kecil untuk skrip halaman (mis. dashboard.js) tanpa menduplikasi kode akun.
+  // Shared API for page scripts, such as dashboard.js, without duplicating account code.
   window.PemonAccount = {
     getProfile: () => profile,
     onChange(callback) {
@@ -225,7 +218,7 @@ function selectPayment(element) {
     }
   }
 
-  // ---------- Dropdown ----------
+  // Dropdown.
   function setMenu(open) {
     menu.classList.toggle('hidden', !open);
     btn.setAttribute('aria-expanded', String(open));
@@ -240,7 +233,7 @@ function selectPayment(element) {
     if (!menu.contains(event.target) && !btn.contains(event.target)) setMenu(false);
   });
 
-  // ---------- Helper untuk semua pop-up ----------
+  // Helpers for all pop-ups.
   function openPopup(popup) {
     popup.classList.remove('hidden');
     popup.classList.add('flex');
@@ -261,13 +254,13 @@ function selectPayment(element) {
     if (logoutModal) closePopup(logoutModal);
   });
 
-  // ---------- Pop-up Keluar ----------
+  // Logout pop-up.
   const logoutForm = byId('akun-logout-form');
   const logoutCancel = byId('akun-logout-batal');
   const logoutOk = byId('akun-logout-ok');
 
   if (logoutForm && logoutModal && logoutOk) {
-    // Klik "Keluar" di dropdown -> tampilkan konfirmasi dulu.
+    // Ask for confirmation when the user selects "Log out" from the dropdown.
     logoutForm.addEventListener('submit', (event) => {
       event.preventDefault();
       setMenu(false);
@@ -275,7 +268,7 @@ function selectPayment(element) {
       logoutOk.focus();
     });
 
-    // "Ya, Keluar" mengirim form POST biasa (ada token CSRF) -> server mengarahkan ke halaman login.
+    // Submit the standard CSRF-protected POST form, then let the server redirect to login.
     logoutOk.addEventListener('click', () => {
       logoutOk.disabled = true;
       logoutForm.submit(); // submit() bawaan tidak memicu event 'submit' di atas
@@ -287,7 +280,7 @@ function selectPayment(element) {
     });
   }
 
-  // ---------- Pop-up Edit Profil ----------
+  // Profile edit pop-up.
   const form = byId('akun-form');
   const editBtn = byId('akun-edit-btn');
   const cancelBtn = byId('akun-batal');
@@ -357,10 +350,13 @@ function selectPayment(element) {
     const confirm = input.confirm.value;
 
     if (fullName.length < 3) return showError('Nama lengkap minimal 3 karakter.');
+    if (!/^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+)*$/u.test(fullName)) {
+      return showError('Nama lengkap hanya boleh berisi huruf dan spasi.');
+    }
     if (phone.replace(/\D/g, '').length < 9) return showError('Nomor handphone minimal 9 digit.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Format email belum benar.');
 
-    // Password hanya diubah kalau salah satu kolom password diisi.
+    // Update the password only when at least one password field is filled in.
     const changingPassword = current !== '' || next !== '' || confirm !== '';
     if (changingPassword) {
       if (current === '') return showError('Masukkan password saat ini.');

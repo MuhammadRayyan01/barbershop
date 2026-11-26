@@ -1,11 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/*
-|--------------------------------------------------------------------------
-| Dependencies
-|--------------------------------------------------------------------------
-*/
+// Dependencies
 
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/db.php';
@@ -17,11 +13,7 @@ require_once __DIR__ . '/../config/payment_finalization.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-/*
-|--------------------------------------------------------------------------
-| Only accept POST
-|--------------------------------------------------------------------------
-*/
+// Only accept POST
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST');
@@ -32,11 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Check authentication
-|--------------------------------------------------------------------------
-*/
+// Check authentication
 
 $userId = filter_var(
     $_SESSION['user_id'] ?? null,
@@ -50,19 +38,11 @@ if ($userId === false || $userId === null || $userId <= 0) {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Check CSRF token
-|--------------------------------------------------------------------------
-*/
+// Check CSRF token
 
 requireValidCsrfToken();
 
-/*
-|--------------------------------------------------------------------------
-| Read request
-|--------------------------------------------------------------------------
-*/
+// Read request
 
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 
@@ -105,11 +85,7 @@ if ($holdToken === '' || strlen($holdToken) > 64) {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Find customer's booking hold
-|--------------------------------------------------------------------------
-*/
+// Find customer's booking hold
 
 try {
     $stmt = $pdo->prepare("
@@ -148,11 +124,7 @@ if (!$hold) {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Already finalized?
-|--------------------------------------------------------------------------
-*/
+// Already finalized?
 
 if (
     $hold['hold_status'] === 'converted' &&
@@ -169,11 +141,7 @@ if (
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Check Midtrans order ID
-|--------------------------------------------------------------------------
-*/
+// Check Midtrans order ID
 
 $orderId = $hold['midtrans_order_id'] ?? null;
 
@@ -185,11 +153,7 @@ if (!is_string($orderId) || $orderId === '') {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Ask Midtrans for actual transaction status
-|--------------------------------------------------------------------------
-*/
+// Ask Midtrans for actual transaction status
 
 try {
     $transaction = midtransGetTransactionStatus($orderId);
@@ -203,11 +167,7 @@ try {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Verify transaction identity
-|--------------------------------------------------------------------------
-*/
+// Verify transaction identity
 
 $verifiedOrderId = $transaction['order_id'] ?? null;
 
@@ -223,11 +183,7 @@ if (
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Normalize and compare amounts
-|--------------------------------------------------------------------------
-*/
+// Normalize and compare amounts
 
 $normalizeAmount = static function (mixed $amount): ?string {
     if (
@@ -270,11 +226,7 @@ if (
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Determine payment status
-|--------------------------------------------------------------------------
-*/
+// Determine payment status
 
 $transactionStatus = $transaction['transaction_status'] ?? '';
 $fraudStatus = $transaction['fraud_status'] ?? '';
@@ -288,11 +240,7 @@ $isPaid = (
     )
 );
 
-/*
-|--------------------------------------------------------------------------
-| Finalize successful payment
-|--------------------------------------------------------------------------
-*/
+// Finalize successful payment
 
 if ($isPaid) {
     try {
@@ -326,11 +274,7 @@ if ($isPaid) {
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Return non-successful transaction status
-|--------------------------------------------------------------------------
-*/
+// Return non-successful transaction status
 
 jsonResponse(200, [
     'success' => true,

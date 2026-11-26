@@ -1,15 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/*
-|--------------------------------------------------------------------------
-| Booking configuration
-|--------------------------------------------------------------------------
-|
-| Each clock hour has a maximum capacity of 3 bookings.
-| Each one-hour slot uses this capacity.
-|
-*/
+// Booking configuration
+// Each clock hour has a maximum capacity of 3 bookings.
+// Each one-hour slot uses this capacity.
 
 const BOOKING_SLOT_CAPACITY = 3;
 const BOOKING_HOLD_DURATION_MINUTES = 5;
@@ -22,15 +16,9 @@ const BOOKING_SLOT_INTERVAL_MINUTES = 60;
 const BOOKING_TIMEZONE = 'Asia/Jakarta';
 
 
-/*
-|--------------------------------------------------------------------------
-| Generate time slots for a date
-|--------------------------------------------------------------------------
-|
-| Creates one-hour slots from 10:00 until 22:00.
-| Existing slots are not duplicated.
-|
-*/
+// Generate time slots for a date
+// Creates one-hour slots from 10:00 until 22:00.
+// Existing slots are not duplicated.
 
 function ensureTimeSlotsForDate(PDO $pdo, string $date): void
 {
@@ -69,14 +57,8 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Expire old booking holds
-|--------------------------------------------------------------------------
-|
-| Holds that have passed their expiration time no longer consume capacity.
-|
-*/
+// Expire old booking holds
+// Holds that have passed their expiration time no longer consume capacity.
 
 function expireBookingHolds(PDO $pdo): int
 {
@@ -95,18 +77,11 @@ function expireBookingHolds(PDO $pdo): int
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Lock a date and clock hour
-|--------------------------------------------------------------------------
-|
-| Requests for a clock hour use the same lock.
-| This prevents simultaneous requests from exceeding hourly capacity.
-|
-| IMPORTANT:
-| Call this function inside an active database transaction.
-|
-*/
+// Lock a date and clock hour
+// Requests for a clock hour use the same lock.
+// This prevents simultaneous requests from exceeding hourly capacity.
+// IMPORTANT:
+// Call this function inside an active database transaction.
 
 function lockBookingHour(
     PDO $pdo,
@@ -164,11 +139,7 @@ function lockBookingHour(
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Retrieve a time slot
-|--------------------------------------------------------------------------
-*/
+// Retrieve a time slot
 
 function getBookingSlot(PDO $pdo, int $slotId): ?array
 {
@@ -221,18 +192,11 @@ function isBookableHourlySlot(array $slot): bool
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Calculate shared hourly capacity
-|--------------------------------------------------------------------------
-|
-| Counts:
-| 1. Active permanent reservations.
-| 2. Active temporary holds that have not expired.
-|
-| All booking records in the clock hour count toward the slot capacity.
-|
-*/
+// Calculate shared hourly capacity
+// Counts:
+// 1. Active permanent reservations.
+// 2. Active temporary holds that have not expired.
+// All booking records in the clock hour count toward the slot capacity.
 
 function getBookingHourCapacity(
     PDO $pdo,

@@ -24,11 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         payButton.textContent = text;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Load Midtrans Snap
-    |--------------------------------------------------------------------------
-    */
+    // Load Midtrans Snap
 
     function loadSnapScript(clientKey, snapUrl) {
         return new Promise((resolve, reject) => {
@@ -62,11 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Check payment status with our backend
-    |--------------------------------------------------------------------------
-    */
+    // Check payment status with our backend
 
     async function checkPaymentStatus() {
         const response = await fetch(
@@ -112,11 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return result.payment_status || 'unknown';
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Poll payment status
-    |--------------------------------------------------------------------------
-    */
+    // Poll payment status
 
     async function waitForPaymentConfirmation() {
         showMessage('Checking your payment. Please wait...');
@@ -146,11 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonState(false, 'Check Payment Again');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Start payment
-    |--------------------------------------------------------------------------
-    */
+    // Start payment
 
     async function startPayment() {
         if (paymentInProgress) {

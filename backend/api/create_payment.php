@@ -1,11 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/*
-|--------------------------------------------------------------------------
-| Dependencies
-|--------------------------------------------------------------------------
-*/
+// Dependencies
 
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/db.php';
@@ -13,11 +9,7 @@ require_once __DIR__ . '/../config/response.php';
 require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/midtrans.php';
 
-/*
-|--------------------------------------------------------------------------
-| Request configuration
-|--------------------------------------------------------------------------
-*/
+// Request configuration
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -31,11 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Authentication
-|--------------------------------------------------------------------------
-*/
+// Authentication
 
 $userId = filter_var(
     $_SESSION['user_id'] ?? null,
@@ -49,19 +37,11 @@ if ($userId === false || $userId === null || $userId <= 0) {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| CSRF validation
-|--------------------------------------------------------------------------
-*/
+// CSRF validation
 
 requireValidCsrfToken();
 
-/*
-|--------------------------------------------------------------------------
-| Read JSON request
-|--------------------------------------------------------------------------
-*/
+// Read JSON request
 
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 
@@ -109,11 +89,7 @@ if (
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Load active booking hold
-|--------------------------------------------------------------------------
-*/
+// Load active booking hold
 
 try {
     $pdo->beginTransaction();
@@ -150,11 +126,7 @@ try {
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate hold status
-    |--------------------------------------------------------------------------
-    */
+    // Validate hold status
 
     if ($hold['hold_status'] !== 'active') {
         $pdo->rollBack();
@@ -193,11 +165,7 @@ try {
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate payment amount
-    |--------------------------------------------------------------------------
-    */
+    // Validate payment amount
 
     $amountString = (string) $hold['total_amount'];
 
@@ -228,11 +196,7 @@ try {
         throw new RuntimeException('Invalid payment amount.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Retrieve customer information
-    |--------------------------------------------------------------------------
-    */
+    // Retrieve customer information
 
     $customerStmt = $pdo->prepare("
         SELECT
@@ -254,11 +218,7 @@ try {
         throw new RuntimeException('Customer account not found.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Create or reuse stable Midtrans order ID
-    |--------------------------------------------------------------------------
-    */
+    // Create or reuse stable Midtrans order ID
 
     $orderId = $hold['midtrans_order_id'];
 
@@ -299,11 +259,7 @@ try {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Reuse existing Snap token
-|--------------------------------------------------------------------------
-*/
+// Reuse existing Snap token
 
 if (!empty($existingSnapToken)) {
     try {
@@ -327,27 +283,16 @@ if (!empty($existingSnapToken)) {
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Create new Midtrans Snap transaction
-|--------------------------------------------------------------------------
-*/
+// Create new Midtrans Snap transaction
 
 try {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Resolve application base URL
-    |--------------------------------------------------------------------------
-    |
-    | Priority:
-    | 1. APP_BASE_URL from server environment.
-    | 2. Approved local development hosts.
-    | 3. Approved ngrok development host.
-    |
-    | Production must configure APP_BASE_URL explicitly.
-    |
-    */
+    // Resolve application base URL
+    // Priority:
+    // 1. APP_BASE_URL from server environment.
+    // 2. Approved local development hosts.
+    // 3. Approved ngrok development host.
+    // Production must configure APP_BASE_URL explicitly.
 
     $appBaseUrl = trim(midtransEnv('APP_BASE_URL'));
 
@@ -383,11 +328,7 @@ try {
         $appBaseUrl = $allowedDevelopmentHosts[$requestHost];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate application base URL
-    |--------------------------------------------------------------------------
-    */
+    // Validate application base URL
 
     $appBaseUrlParts = parse_url($appBaseUrl);
 
@@ -407,11 +348,7 @@ try {
         throw new RuntimeException('APP_BASE_URL is missing or invalid.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Require HTTPS for public application URLs
-    |--------------------------------------------------------------------------
-    */
+    // Require HTTPS for public application URLs
 
     $isLocalHost = in_array(
         strtolower($appBaseUrlParts['host']),
@@ -428,11 +365,7 @@ try {
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Create Midtrans payload
-    |--------------------------------------------------------------------------
-    */
+    // Create Midtrans payload
 
     $payload = [
         'transaction_details' => [
@@ -460,11 +393,7 @@ try {
         throw new RuntimeException('Midtrans did not return a Snap token.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Save Snap token
-    |--------------------------------------------------------------------------
-    */
+    // Save Snap token
 
     $saveStmt = $pdo->prepare("
         UPDATE booking_hold
@@ -489,11 +418,7 @@ try {
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Return payment information
-    |--------------------------------------------------------------------------
-    */
+    // Return payment information
 
     jsonResponse(201, [
         'success' => true,

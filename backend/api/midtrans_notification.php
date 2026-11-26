@@ -225,11 +225,7 @@ try {
 
 $transactionStatus = $transaction['transaction_status'] ?? '';
 
-/*
-|--------------------------------------------------------------------------
-| Handle a fully refunded transaction
-|--------------------------------------------------------------------------
-*/
+// Handle a fully refunded transaction
 
 if ($transactionStatus === 'refund') {
     try {
@@ -449,11 +445,7 @@ if ($transactionStatus === 'refund') {
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Handle a partial refund
-|--------------------------------------------------------------------------
-*/
+// Handle a partial refund
 
 if ($transactionStatus === 'partial_refund') {
     jsonResponse(200, [
@@ -463,16 +455,10 @@ if ($transactionStatus === 'partial_refund') {
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Handle a confirmed Midtrans cancellation
-|--------------------------------------------------------------------------
-|
-| This also repairs local records if Midtrans successfully cancelled a
-| captured transaction but the customer cancellation endpoint failed
-| before updating the database.
-|
-*/
+// Handle a confirmed Midtrans cancellation
+// This also repairs local records if Midtrans successfully cancelled a
+// captured transaction but the customer cancellation endpoint failed
+// before updating the database.
 
 if ($transactionStatus === 'cancel') {
     try {
@@ -618,11 +604,7 @@ if ($transactionStatus === 'cancel') {
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Finalize a successful payment
-|--------------------------------------------------------------------------
-*/
+// Finalize a successful payment
 
 // Determine whether the transaction is a successful payment.
 $fraudStatus = $transaction['fraud_status'] ?? '';

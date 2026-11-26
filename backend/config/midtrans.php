@@ -3,11 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/load_env.php';
 
-/*
-|--------------------------------------------------------------------------
-| Environment configuration
-|--------------------------------------------------------------------------
-*/
+// Environment configuration
 
 function midtransEnv(string $key): string
 {
@@ -18,11 +14,7 @@ function midtransEnv(string $key): string
     return is_string($value) ? trim($value) : '';
 }
 
-/*
-|--------------------------------------------------------------------------
-| Midtrans configuration
-|--------------------------------------------------------------------------
-*/
+// Midtrans configuration
 
 function midtransIsProduction(): bool
 {
@@ -54,11 +46,7 @@ function midtransClientKey(): string
     return $key;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Midtrans API URLs
-|--------------------------------------------------------------------------
-*/
+// Midtrans API URLs
 
 function midtransApiBaseUrl(): string
 {
@@ -85,11 +73,7 @@ function midtransSignatureSecretKey(): string
     return $key !== '' ? $key : midtransServerKey();
 }
 
-/*
-|--------------------------------------------------------------------------
-| General Midtrans API request
-|--------------------------------------------------------------------------
-*/
+// General Midtrans API request
 
 function midtransApiRequest(
     string $method,
@@ -211,11 +195,7 @@ function midtransApiRequest(
     return $decodedResponse;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Create Snap transaction
-|--------------------------------------------------------------------------
-*/
+// Create Snap transaction
 
 function midtransCreateSnapTransaction(array $payload): array
 {
@@ -226,11 +206,7 @@ function midtransCreateSnapTransaction(array $payload): array
     );
 }
 
-/*
-|--------------------------------------------------------------------------
-| Retrieve transaction status
-|--------------------------------------------------------------------------
-*/
+// Retrieve transaction status
 
 function midtransGetTransactionStatus(string $orderId): array
 {
@@ -361,11 +337,7 @@ function midtransCancelTransaction(string $orderId): array
     );
 }
 
-/*
-|--------------------------------------------------------------------------
-| Verify Midtrans notification signature
-|--------------------------------------------------------------------------
-*/
+// Verify Midtrans notification signature
 
 function midtransVerifyNotificationSignature(
     array $notification

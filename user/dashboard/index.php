@@ -47,11 +47,17 @@ require_once __DIR__ . '/../../includes/header.php';
             </p>
         </div>
 
-        <div class="grid grid-cols-1 gap-4" aria-label="Ringkasan reservasi">
+        <div
+            class="grid grid-cols-1 gap-4 sm:gap-8"
+            aria-label="Ringkasan reservasi"
+        >
             <div class="space-y-1">
                 <span class="material-symbols-rounded text-3xl text-green-600" aria-hidden="true">calendar_month</span>
                 <p id="jumlah-reservasi" class="text-2xl font-bold">0</p>
-                <p class="text-xs sm:text-sm text-gray-600">Reservasi mendatang</p>
+
+                <p class="text-xs sm:text-sm text-gray-600">
+                    Reservasi mendatang
+                </p>
             </div>
         </div>
 

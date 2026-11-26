@@ -21,17 +21,13 @@
     let awaitingVerification = false;
     let verifying = false;
 
-    // -----------------------------------------------
     // Format currency
-    // -----------------------------------------------
 
     function formatCurrency(value) {
         return 'Rp ' + Number(value).toLocaleString('id-ID');
     }
 
-    // -----------------------------------------------
     // Format date
-    // -----------------------------------------------
 
     function formatDate(value) {
         const date = new Date(`${value}T00:00:00+07:00`);
@@ -44,9 +40,7 @@
         }).format(date);
     }
 
-    // -----------------------------------------------
     // Display messages
-    // -----------------------------------------------
 
     function showError(text) {
         loading.classList.add('hidden');
@@ -69,9 +63,7 @@
         message.className = styles[type] || styles.info;
     }
 
-    // -----------------------------------------------
     // Load confirmation details from active hold
-    // -----------------------------------------------
 
     async function loadConfirmation() {
         try {
@@ -135,9 +127,7 @@
         }
     }
 
-    // -----------------------------------------------
     // Send JSON POST request
-    // -----------------------------------------------
 
     async function postJson(url, data, csrfToken) {
         const response = await fetch(url, {
@@ -163,9 +153,7 @@
         return result;
     }
 
-    // -----------------------------------------------
     // Load Midtrans Snap JavaScript
-    // -----------------------------------------------
 
     function loadMidtransSnap(snapUrl, clientKey) {
         return new Promise((resolve, reject) => {
@@ -302,10 +290,8 @@
         button.textContent = 'Periksa status pembayaran';
     }
 
-    // -----------------------------------------------
     // Ask OUR backend to verify the payment with Midtrans.
     // The browser callback is never trusted as proof of payment.
-    // -----------------------------------------------
 
     async function verifyPaymentStatus(csrfToken) {
         if (verifying) return;
@@ -409,9 +395,7 @@
         }
     }
 
-    // -----------------------------------------------
     // Confirm and create Midtrans payment
-    // -----------------------------------------------
 
     confirmationForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -553,9 +537,7 @@
         }
     });
 
-    // -----------------------------------------------
     // Load confirmation when page opens
-    // -----------------------------------------------
 
     loadConfirmation();
 
