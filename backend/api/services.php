@@ -12,7 +12,7 @@ if(($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET'){
 
 try{
     $stmt = $pdo->prepare("
-                            select service_id, service_name, description, price
+                            select service_id, service_name, description, price, duration_minutes
                             from service where status = :status order by service_name");
 
     $stmt->execute(['status' => 'active']);

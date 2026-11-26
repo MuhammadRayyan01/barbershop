@@ -17,7 +17,7 @@ if ($method === 'GET') {
         jsonResponse(422, ['success' => false, 'message' => 'Unsupported service status.']);
     }
     try {
-        $sql = 'SELECT service_id, service_name, description, price, status, created_at, updated_at FROM service';
+        $sql = 'SELECT service_id, service_name, description, price, duration_minutes, status, created_at, updated_at FROM service';
         if ($status !== 'all') $sql .= ' WHERE status = :status';
         $sql .= ' ORDER BY service_name';
         $stmt = $pdo->prepare($sql);
@@ -49,9 +49,10 @@ if ($method === 'DELETE') {
 $name = trim((string) ($data['service_name'] ?? ''));
 $description = trim((string) ($data['description'] ?? ''));
 $priceInput = $data['price'] ?? null;
+$durationMinutes = filter_var($data['duration_minutes'] ?? null, FILTER_VALIDATE_INT);
 $newStatus = $data['status'] ?? 'active';
-if ($name === '' || strlen($name) > 255 || !is_numeric($priceInput) || (float) $priceInput < 0 || (float) $priceInput > 99999999.99 || strlen($description) > 10000) {
-    jsonResponse(422, ['success' => false, 'message' => 'Provide a valid service name, description, and non-negative price.']);
+if ($name === '' || strlen($name) > 255 || !is_numeric($priceInput) || (float) $priceInput < 0 || (float) $priceInput > 99999999.99 || strlen($description) > 10000 || $durationMinutes === false || $durationMinutes < 15 || $durationMinutes > 240) {
+    jsonResponse(422, ['success' => false, 'message' => 'Provide a valid name, description, price, and duration between 15 and 240 minutes.']);
 }
 if ($method === 'POST' && !in_array($newStatus, ['active', 'inactive'], true)) {
     jsonResponse(422, ['success' => false, 'message' => 'Service status must be active or inactive.']);
@@ -59,12 +60,12 @@ if ($method === 'POST' && !in_array($newStatus, ['active', 'inactive'], true)) {
 
 try {
     if ($method === 'POST') {
-        $stmt = $pdo->prepare('INSERT INTO service (service_name, description, price, status) VALUES (:name, :description, :price, :status) RETURNING service_id, service_name, description, price, status');
+        $stmt = $pdo->prepare('INSERT INTO service (service_name, description, price, duration_minutes, status) VALUES (:name, :description, :price, :duration_minutes, :status) RETURNING service_id, service_name, description, price, duration_minutes, status');
     } else {
         if (!is_int($serviceId) || $serviceId < 1) jsonResponse(422, ['success' => false, 'message' => 'A valid service ID is required.']);
-        $stmt = $pdo->prepare('UPDATE service SET service_name = :name, description = :description, price = :price, updated_at = CURRENT_TIMESTAMP WHERE service_id = :id RETURNING service_id, service_name, description, price, status');
+        $stmt = $pdo->prepare('UPDATE service SET service_name = :name, description = :description, price = :price, duration_minutes = :duration_minutes, updated_at = CURRENT_TIMESTAMP WHERE service_id = :id RETURNING service_id, service_name, description, price, duration_minutes, status');
     }
-    $params = ['name' => $name, 'description' => $description === '' ? null : $description, 'price' => number_format((float) $priceInput, 2, '.', '')];
+    $params = ['name' => $name, 'description' => $description === '' ? null : $description, 'price' => number_format((float) $priceInput, 2, '.', ''), 'duration_minutes' => $durationMinutes];
     if ($method === 'POST') $params['status'] = $newStatus;
     if ($method === 'PATCH') $params['id'] = $serviceId;
     $stmt->execute($params);

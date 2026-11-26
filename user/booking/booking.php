@@ -21,7 +21,8 @@ try {
             service_id,
             service_name,
             description,
-            price
+            price,
+            duration_minutes
          FROM service
          WHERE status = 'active'
          ORDER BY service_name"
@@ -180,6 +181,10 @@ require __DIR__ . '/../../includes/header.php';
                                 <span class="mt-2 block text-[11px] text-gray-600">
                                     <?= $escape($service['description'] ?: 'Layanan barber') ?>
                                 </span>
+                                <span class="mt-2 inline-flex rounded-full bg-[#e8f3ee] px-2.5 py-1 text-[10px] font-semibold text-[#0d3b36]">
+                                    <?= (int) $service['duration_minutes'] ?> menit
+                                </span>
+
                             </span>
 
                             <span>

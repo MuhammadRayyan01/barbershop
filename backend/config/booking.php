@@ -51,9 +51,9 @@ function ensureTimeSlotsForDate(PDO $pdo, string $date): void
         DO NOTHING"
     );
 
-    $stmt->execute([
-        'slot_date' => $date
-    ]);
+ $stmt->execute([
+    'slot_date' => $date,
+]);
 }
 
 
@@ -151,7 +151,9 @@ function getBookingSlot(PDO $pdo, int $slotId): ?array
             end_time,
             is_available::text AS is_available
          FROM time_slot
-         WHERE slot_id = :slot_id"
+         WHERE slot_id = :slot_id
+           AND EXTRACT(MINUTE FROM start_time) = 0
+           AND end_time = (start_time + INTERVAL '1 hour')::time"
     );
 
     $stmt->execute([

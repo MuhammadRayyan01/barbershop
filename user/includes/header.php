@@ -8,6 +8,7 @@ $bodyClass = $userBodyClass ?? 'min-h-screen bg-[#f4f7f5] text-[#0d3b36]';
 $showProfileEdit = $userShowProfileEdit ?? false;
 $dashboardUrl = $assetPrefix . 'user/dashboard/index.php';
 $scheduleUrl = $assetPrefix . 'user/dashboard/schedule.php';
+$reservationsUrl = $assetPrefix . 'user/dashboard/reservations.php';
 $bookingUrl = $assetPrefix . 'user/booking/booking.php';
 $aboutUrl = $assetPrefix . 'user/dashboard/aboutUs.html';
 $logoutUrl = $assetPrefix . 'backend/auth/logout.php';
@@ -35,7 +36,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
       <a href="<?= htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8') ?>" <?= $activePage === 'dashboard' ? 'aria-current="page"' : '' ?> class="<?= $activePage === 'dashboard' ? 'font-semibold text-[#0d3b36]' : 'text-gray-600 hover:text-[#0d3b36]' ?>">Dashboard</a>
       <a href="<?= htmlspecialchars($scheduleUrl, ENT_QUOTES, 'UTF-8') ?>" <?= $activePage === 'schedule' ? 'aria-current="page"' : '' ?> class="<?= $activePage === 'schedule' ? 'font-semibold text-[#0d3b36]' : 'text-gray-600 hover:text-[#0d3b36]' ?>">Jadwal</a>
       <a href="<?= htmlspecialchars($aboutUrl, ENT_QUOTES, 'UTF-8') ?>" <?= $activePage === 'about' ? 'aria-current="page"' : '' ?> class="<?= $activePage === 'about' ? 'font-semibold text-[#0d3b36]' : 'text-gray-600 hover:text-[#0d3b36]' ?>">Tentang</a>
-      <a href="<?= htmlspecialchars($bookingUrl, ENT_QUOTES, 'UTF-8') ?>" <?= $activePage === 'booking' ? 'aria-current="page"' : '' ?> class="<?= $activePage === 'booking' ? 'font-semibold text-[#0d3b36]' : 'text-gray-600 hover:text-[#0d3b36]' ?>">Reservasi</a>
+      <a href="<?= htmlspecialchars($reservationsUrl, ENT_QUOTES, 'UTF-8') ?>" <?= $activePage === 'reservations' ? 'aria-current="page"' : '' ?> class="<?= $activePage === 'reservations' ? 'font-semibold text-[#0d3b36]' : 'text-gray-600 hover:text-[#0d3b36]' ?>">Reservasi</a>
     </nav>
 
     <?php if ($isLoggedIn): ?>
@@ -50,7 +51,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
           <?php else: ?>
             <a href="<?= htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 hover:bg-gray-50">Kelola Profil</a>
           <?php endif; ?>
-          <a href="<?= htmlspecialchars($scheduleUrl, ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
+          <a href="<?= htmlspecialchars($reservationsUrl, ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 hover:bg-gray-50">Riwayat Reservasi</a>
           <form method="post" action="<?= htmlspecialchars($logoutUrl, ENT_QUOTES, 'UTF-8') ?>">
             <button type="submit" class="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50">Keluar</button>
           </form>
