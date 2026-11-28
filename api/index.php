@@ -15,7 +15,7 @@ unset($_GET['__route']);
 if (str_contains($path, "\0") || str_contains($path, '..')) {
     http_response_code(400);
     exit('Bad request');
-}
+} 
 
 if (str_ends_with($path, '/')) {
     $path .= 'index.php';
