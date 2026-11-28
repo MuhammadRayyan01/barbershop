@@ -1,181 +1,476 @@
-
-
-create table if not exists users(
-        user_id serial primary key,
-        username varchar(255) unique not null,
-        email varchar(255) unique not null,
-        password_hash varchar(255) not null,
-        full_name varchar(255) not null,
-        phone_number varchar(15) not null,
-        created_at timestamp default current_timestamp not null,
-        updated_at timestamp default current_timestamp not null
+create type public.pay_status as enum (
+    'pending',
+    'paid',
+    'verification pending',
+    'failed',
+    'refunded',
+    'cancelled'
 );
 
-create table if not exists admin(
-        admin_id serial primary key,
-        username varchar(255) unique not null,
-        email varchar(255) unique not null,
-        password_hash varchar(255) not null,
-        full_name varchar(255) not null,
-        created_at timestamp default current_timestamp not null,
-        updated_at timestamp default current_timestamp not null
+create type public.res_status as enum (
+    'active',
+    'inactive'
 );
 
-create type service_status as enum('active','inactive');
-create table if not exists service(
-        service_id serial primary key,
-        service_name varchar(255) not null,
-        description text,
-        price decimal (10, 2) not null,
-        duration_minutes int not null default 30,
-        status service_status default 'active'  not null,
-        created_at timestamp default current_timestamp not null,
-        updated_at timestamp default current_timestamp not null,
-        constraint check_service_duration_minutes check(duration_minutes between 15 and 240)
+create type public.service_status as enum (
+    'active',
+    'inactive'
 );
 
-create table if not exists additional_service (
-        additional_service_id serial primary key,
-        service_id int,
-        additional_service_name varchar(255) not null,
-        additional_service_price decimal(10, 2) not null,
-        
-        constraint fk_service foreign key (service_id) references service (service_id)
+create type public.slot_status as enum (
+    'available',
+    'not available'
 );
 
-create type slot_status as enum ('available', 'not available');
-create table if not exists time_slot(
-        slot_id serial primary key,
-        slot_date date not null,
-        start_time time not null,
-        end_time time not null,
-        is_available slot_status default 'available' not null,
-        booking_capacity smallint not null default 3 check (booking_capacity between 0 and 3),
+--tables
 
-        constraint check_slot_time check(end_time > start_time),
-        constraint unique_slot_datetime unique(slot_date, start_time, end_time)
+create table public.users (
+    user_id serial,
+    username varchar(255) not null,
+    email varchar(255) not null,
+    password_hash varchar(255) not null,
+    full_name varchar(255) not null,
+    phone_number varchar(15) not null,
+    created_at timestamp without time zone default current_timestamp not null,
+    updated_at timestamp without time zone default current_timestamp not null
 );
 
-create type res_status as enum('active', 'inactive');
-create table if not exists reservation(
-        reservation_id serial primary key,
-        user_id int not null,
-        slot_id int not null,
-        service_id int not null,
-        service_price decimal(10, 2),
-        additional_service_id int,
-        additional_service_price decimal(10, 2),
-        reservation_status res_status default 'active' not null,
-        admin_cancelled_at timestamp,
-        created_at timestamp default current_timestamp not null,
-        updated_at timestamp default current_timestamp not null,
-
-        constraint fk_reservation_user foreign key (user_id) references users (user_id),
-        constraint fk_reservation_slot foreign key (slot_id) references time_slot (slot_id),
-        constraint fk_reservation_service foreign key (service_id) references service (service_id),
-        constraint fk_reservation_additional foreign key (additional_service_id) references additional_service (additional_service_id),
-
-        constraint check_reservation_service_price check(service_price >= 0),
-        constraint check_reservation_service_additional_price check(additional_service_price >= 0)
+create table public.admin (
+    admin_id serial,
+    username varchar(255) not null,
+    email varchar(255) not null,
+    password_hash varchar(255) not null,
+    full_name varchar(255) not null,
+    created_at timestamp without time zone default current_timestamp not null,
+    updated_at timestamp without time zone default current_timestamp not null
 );
 
-create index if not exists idx_reservation_active_slot
-        on reservation (slot_id)
-        where reservation_status = 'active';
-
-create table if not exists reservation_additional_services(
-        reservation_id int not null,
-        additional_service_id int not null,
-        price decimal (10, 2) not null,
-
-        primary key (reservation_id, additional_service_id),
-
-        constraint fk_ras_reservation foreign key (reservation_id) references reservation(reservation_id),
-        constraint fk_ras_reservation_additional_service foreign key (additional_service_id)references additional_service (additional_service_id),
-
-        constraint check_ras_price check (price >= 0)
+create table public.service (
+    service_id serial,
+    service_name varchar(255) not null,
+    description text,
+    price numeric(10,2) not null,
+    status public.service_status default 'active' not null,
+    created_at timestamp without time zone default current_timestamp not null,
+    updated_at timestamp without time zone default current_timestamp not null,
+    category varchar(20) default 'regular' not null,
+    duration_minutes integer default 30 not null,
+    constraint check_service_duration_minutes
+        check (duration_minutes >= 15 and duration_minutes <= 240),
+    constraint service_category_check
+        check (category in ('premium', 'regular'))
 );
 
-create type pay_status as enum('pending','paid','verification pending','failed','refunded','cancelled');
-create table if not exists payment(
-        payment_id serial primary key,
-        reservation_id int unique not null,
-        payment_type varchar(100) not null,
-        payment_status pay_status default 'pending' not null,
-        amount decimal(10, 2) not null,
-        payment_proof_url varchar(255),
-        transaction_reference varchar(255),
-        refund_method varchar(20) not null default 'gateway' check (refund_method in ('gateway', 'manual')),
-        admin_cancel_outcome varchar(32) check (admin_cancel_outcome is null or admin_cancel_outcome in ('no_payment', 'pending_cancelled', 'authorization_voided', 'capture_voided')),
-        snap_token varchar(255),
-        created_at timestamp default current_timestamp not null,
-        updated_at timestamp default current_timestamp not null,
-
-        constraint fk_payment_reservation foreign key (reservation_id) references reservation (reservation_id)
+create table public.time_slot (
+    slot_id serial,
+    slot_date date not null,
+    start_time time without time zone not null,
+    end_time time without time zone not null,
+    is_available public.slot_status default 'available' not null,
+    booking_capacity smallint default 3 not null,
+    constraint check_slot_time
+        check (end_time > start_time),
+    constraint time_slot_booking_capacity_range
+        check (booking_capacity >= 0 and booking_capacity <= 3)
 );
 
-create table if not exists invoice(
-        invoice_id serial primary key,
-        reservation_id int unique not null,
-        customer_name varchar(255) not null,
-        phone_number varchar(15) not null,
-        total_payment decimal(10, 2) not null,
-        cancellation_deadline timestamp not null,
-        created_at timestamp default current_timestamp not null,
-
-        constraint fk_invoice_reservation foreign key (reservation_id) references reservation (reservation_id),
-        constraint check_invoice_total check (total_payment >= 0)
+create table public.additional_service (
+    additional_service_id serial,
+    service_id integer,
+    additional_service_name varchar(255) not null,
+    additional_service_price numeric(10,2) not null
 );
 
-create table if not exists booking_hold(
-        hold_id bigint generated by default as identity primary key,
-        hold_token varchar(64) not null unique,
-        user_id int not null,
-        slot_id int not null,
-        service_id int not null,
-        service_price decimal(10, 2) not null,
-        additional_service_id int,
-        additional_service_price decimal(10, 2),
-        total_amount decimal(10, 2) not null,
-        hold_status varchar(20) not null default 'active',
-        expires_at timestamptz not null,
-        midtrans_order_id varchar(255) unique,
-        snap_token text,
-        created_at timestamptz not null default current_timestamp,
-        updated_at timestamptz not null default current_timestamp,
-        reservation_id int unique,
+create table public.reservation (
+    reservation_id serial,
+    user_id integer not null,
+    slot_id integer not null,
+    service_id integer not null,
+    service_price numeric(10,2),
+    additional_service_id integer,
+    additional_service_price numeric(10,2),
+    reservation_status public.res_status default 'active' not null,
+    created_at timestamp without time zone default current_timestamp not null,
+    updated_at timestamp without time zone default current_timestamp not null,
+    admin_cancelled_at timestamp without time zone,
+    constraint check_reservation_service_additional_price
+        check (additional_service_price >= 0),
+    constraint check_reservation_service_price
+        check (service_price >= 0)
+);
 
-        constraint fk_booking_hold_user foreign key (user_id) references users(user_id),
-        constraint fk_booking_hold_slot foreign key (slot_id) references time_slot(slot_id),
-        constraint fk_booking_hold_service foreign key (service_id) references service(service_id),
-        constraint fk_booking_hold_additional_service foreign key (additional_service_id) references additional_service(additional_service_id),
-        constraint fk_booking_hold_reservation foreign key (reservation_id) references reservation(reservation_id),
-        constraint check_booking_hold_status check (hold_status in ('active', 'converted', 'expired', 'released', 'failed')),
-        constraint check_booking_hold_service_price check (service_price >= 0),
-        constraint check_booking_hold_total_amount check (total_amount > 0),
-        constraint check_booking_hold_additional_price check (
+create table public.booking_hold (
+    hold_id bigint generated by default as identity,
+    hold_token varchar(64) not null,
+    user_id integer not null,
+    slot_id integer not null,
+    service_id integer not null,
+    service_price numeric(10,2) not null,
+    additional_service_id integer,
+    additional_service_price numeric(10,2),
+    total_amount numeric(10,2) not null,
+    hold_status varchar(20) default 'active' not null,
+    expires_at timestamp with time zone not null,
+    midtrans_order_id varchar(255),
+    snap_token text,
+    created_at timestamp with time zone default current_timestamp not null,
+    updated_at timestamp with time zone default current_timestamp not null,
+    reservation_id integer,
+    constraint booking_hold_hold_status_check
+        check (hold_status in ('active', 'converted', 'expired', 'released', 'failed')),
+    constraint booking_hold_service_price_check
+        check (service_price >= 0),
+    constraint booking_hold_total_amount_check
+        check (total_amount > 0),
+    constraint chk_booking_hold_additional_price
+        check (
             (additional_service_id is null and additional_service_price is null)
-            or (additional_service_id is not null and additional_service_price is not null and additional_service_price >= 0)
+            or
+            (additional_service_id is not null
+             and additional_service_price is not null
+             and additional_service_price >= 0)
         ),
-        constraint check_booking_hold_total check (total_amount = service_price + coalesce(additional_service_price, 0))
+    constraint chk_booking_hold_total
+        check (total_amount = service_price + coalesce(additional_service_price, 0))
 );
 
-create index if not exists idx_booking_hold_expiration
-        on booking_hold (expires_at) where hold_status = 'active';
-create index if not exists idx_booking_hold_slot_status_expiry
-        on booking_hold (slot_id, hold_status, expires_at);
-create index if not exists idx_booking_hold_user_status
-        on booking_hold (user_id, hold_status);
-
-create table if not exists shop_notice(
-        notice_id serial primary key,
-        admin_id int not null,
-        title varchar(255) not null,
-        message text not null,
-        is_active boolean default true not null,
-        start_date date,
-        end_date date,
-        created_at timestamp default current_timestamp not null,
-
-        constraint fk_notice_admin foreign key (admin_id) references admin (admin_id)
+create table public.payment (
+    payment_id serial,
+    reservation_id integer not null,
+    payment_type varchar(100) not null,
+    payment_status public.pay_status default 'pending' not null,
+    amount numeric(10,2) not null,
+    transaction_reference varchar(255),
+    created_at timestamp without time zone default current_timestamp not null,
+    updated_at timestamp without time zone default current_timestamp not null,
+    snap_token text,
+    refund_status varchar(20) default 'not_requested' not null,
+    refund_key varchar(100),
+    refund_reason text,
+    refund_requested_at timestamp without time zone,
+    refunded_at timestamp without time zone,
+    refund_method varchar(20) default 'gateway' not null,
+    admin_cancel_outcome varchar(32),
+    constraint check_payment_refund_status
+        check (refund_status in ('not_requested', 'pending', 'completed', 'failed')),
+    constraint payment_admin_cancel_outcome_check
+        check (
+            admin_cancel_outcome is null
+            or admin_cancel_outcome in (
+                'no_payment',
+                'pending_cancelled',
+                'authorization_voided',
+                'capture_voided'
+            )
+        ),
+    constraint payment_refund_method_check
+        check (refund_method in ('gateway', 'manual'))
 );
+
+create table public.invoice (
+    invoice_id serial,
+    reservation_id integer not null,
+    customer_name varchar(255) not null,
+    phone_number varchar(15) not null,
+    total_payment numeric(10,2) not null,
+    cancellation_deadline timestamp without time zone not null,
+    created_at timestamp without time zone default current_timestamp not null,
+    constraint check_invoice_total
+        check (total_payment >= 0)
+);
+
+create table public.password_reset_tokens (
+    reset_id bigserial,
+    user_id integer not null,
+    token_hash char(64) not null,
+    expires_at timestamp without time zone not null,
+    created_at timestamp without time zone default current_timestamp not null
+);
+
+create table public.reservation_additional_services (
+    reservation_id integer not null,
+    additional_service_id integer not null,
+    price numeric(10,2) not null,
+    constraint check_ras_price
+        check (price >= 0)
+);
+
+create table public.reservation_schedule_change (
+    schedule_change_id bigint generated by default as identity,
+    reservation_id integer not null,
+    old_slot_id integer not null,
+    new_slot_id integer not null,
+    admin_id integer not null,
+    customer_agreed boolean not null,
+    reason varchar(500) default 'Kendala operasional' not null,
+    created_at timestamp without time zone default current_timestamp not null,
+    constraint reservation_schedule_change_customer_agreed_check
+        check (customer_agreed = true),
+    constraint reservation_schedule_change_different_slots
+        check (old_slot_id <> new_slot_id)
+);
+
+create table public.shop_notice (
+    notice_id serial,
+    admin_id integer not null,
+    title varchar(255) not null,
+    message text not null,
+    is_active boolean default true not null,
+    start_date date,
+    end_date date,
+    created_at timestamp without time zone default current_timestamp not null
+);
+
+-- primary keys
+
+alter table public.users
+    add constraint users_pkey primary key (user_id);
+
+alter table public.admin
+    add constraint admin_pkey primary key (admin_id);
+
+alter table public.service
+    add constraint service_pkey primary key (service_id);
+
+alter table public.time_slot
+    add constraint time_slot_pkey primary key (slot_id);
+
+alter table public.additional_service
+    add constraint additional_service_pkey primary key (additional_service_id);
+
+alter table public.reservation
+    add constraint reservation_pkey primary key (reservation_id);
+
+alter table public.booking_hold
+    add constraint booking_hold_pkey primary key (hold_id);
+
+alter table public.payment
+    add constraint payment_pkey primary key (payment_id);
+
+alter table public.invoice
+    add constraint invoice_pkey primary key (invoice_id);
+
+alter table public.password_reset_tokens
+    add constraint password_reset_tokens_pkey primary key (reset_id);
+
+alter table public.reservation_additional_services
+    add constraint reservation_additional_services_pkey
+    primary key (reservation_id, additional_service_id);
+
+alter table public.reservation_schedule_change
+    add constraint reservation_schedule_change_pkey
+    primary key (schedule_change_id);
+
+alter table public.shop_notice
+    add constraint shop_notice_pkey primary key (notice_id);
+
+-- unique constraints
+
+alter table public.users
+    add constraint users_email_key unique (email);
+
+alter table public.users
+    add constraint users_username_key unique (username);
+
+alter table public.admin
+    add constraint admin_email_key unique (email);
+
+alter table public.admin
+    add constraint admin_username_key unique (username);
+
+alter table public.booking_hold
+    add constraint booking_hold_hold_token_key unique (hold_token);
+
+alter table public.booking_hold
+    add constraint booking_hold_midtrans_order_id_key unique (midtrans_order_id);
+
+alter table public.booking_hold
+    add constraint booking_hold_reservation_id_key unique (reservation_id);
+
+alter table public.invoice
+    add constraint invoice_reservation_id_key unique (reservation_id);
+
+alter table public.password_reset_tokens
+    add constraint password_reset_tokens_token_hash_key unique (token_hash);
+
+alter table public.payment
+    add constraint payment_reservation_id_key unique (reservation_id);
+
+alter table public.time_slot
+    add constraint unique_slot_datetime unique (slot_date, start_time, end_time);
+
+-- foreign keys
+
+alter table public.booking_hold
+    add constraint booking_hold_reservation_id_fkey
+    foreign key (reservation_id) references public.reservation(reservation_id);
+
+alter table public.booking_hold
+    add constraint fk_booking_hold_additional_service
+    foreign key (additional_service_id)
+    references public.additional_service(additional_service_id);
+
+alter table public.booking_hold
+    add constraint fk_booking_hold_service
+    foreign key (service_id) references public.service(service_id);
+
+alter table public.booking_hold
+    add constraint fk_booking_hold_slot
+    foreign key (slot_id) references public.time_slot(slot_id);
+
+alter table public.booking_hold
+    add constraint fk_booking_hold_user
+    foreign key (user_id) references public.users(user_id);
+
+alter table public.invoice
+    add constraint fk_invoice_reservation
+    foreign key (reservation_id) references public.reservation(reservation_id);
+
+alter table public.shop_notice
+    add constraint fk_notice_admin
+    foreign key (admin_id) references public.admin(admin_id);
+
+alter table public.payment
+    add constraint fk_payment_reservation
+    foreign key (reservation_id) references public.reservation(reservation_id);
+
+alter table public.reservation_additional_services
+    add constraint fk_ras_reservation
+    foreign key (reservation_id) references public.reservation(reservation_id);
+
+alter table public.reservation_additional_services
+    add constraint fk_ras_reservation_additional_service
+    foreign key (additional_service_id)
+    references public.additional_service(additional_service_id);
+
+alter table public.reservation
+    add constraint fk_reservation_additional
+    foreign key (additional_service_id)
+    references public.additional_service(additional_service_id);
+
+alter table public.reservation
+    add constraint fk_reservation_service
+    foreign key (service_id) references public.service(service_id);
+
+alter table public.reservation
+    add constraint fk_reservation_slot
+    foreign key (slot_id) references public.time_slot(slot_id);
+
+alter table public.reservation
+    add constraint fk_reservation_user
+    foreign key (user_id) references public.users(user_id);
+
+alter table public.additional_service
+    add constraint fk_service
+    foreign key (service_id) references public.service(service_id);
+
+alter table public.password_reset_tokens
+    add constraint password_reset_tokens_user_id_fkey
+    foreign key (user_id) references public.users(user_id) on delete cascade;
+
+alter table public.reservation_schedule_change
+    add constraint reservation_schedule_change_admin_id_fkey
+    foreign key (admin_id) references public.admin(admin_id);
+
+alter table public.reservation_schedule_change
+    add constraint reservation_schedule_change_new_slot_id_fkey
+    foreign key (new_slot_id) references public.time_slot(slot_id);
+
+alter table public.reservation_schedule_change
+    add constraint reservation_schedule_change_old_slot_id_fkey
+    foreign key (old_slot_id) references public.time_slot(slot_id);
+
+alter table public.reservation_schedule_change
+    add constraint reservation_schedule_change_reservation_id_fkey
+    foreign key (reservation_id) references public.reservation(reservation_id);
+
+-- function
+
+create or replace function public.check_category_slot_availability()
+returns trigger
+language plpgsql
+as $$
+declare
+    target_slot_date date;
+    target_start_time time;
+    booked_count integer;
+    hourly_lock_key text;
+begin
+    select slot_date, start_time
+    into target_slot_date, target_start_time
+    from public.time_slot
+    where slot_id = new.slot_id;
+
+    if not found then
+        raise exception 'Selected time slot does not exist.';
+    end if;
+
+    hourly_lock_key :=
+        target_slot_date::text
+        || ':'
+        || lpad(
+            extract(hour from target_start_time)::integer::text,
+            2,
+            '0'
+        );
+
+    perform pg_advisory_xact_lock(
+        hashtextextended(hourly_lock_key, 0)
+    );
+
+    select count(*)
+    into booked_count
+    from public.reservation as r
+    inner join public.time_slot as ts
+        on ts.slot_id = r.slot_id
+    where ts.slot_date = target_slot_date
+      and extract(hour from ts.start_time)
+          = extract(hour from target_start_time)
+      and r.reservation_status = 'active'
+      and r.reservation_id is distinct from new.reservation_id;
+
+    if booked_count >= 3 then
+        raise exception
+            'This hour is fully booked. Maximum capacity is 3 bookings per hour.';
+    end if;
+
+    return new;
+end;
+$$;
+
+--  trigger
+
+create trigger reservation_category_slot_check
+before insert or update of
+    slot_id,
+    service_id,
+    reservation_status
+on public.reservation
+for each row
+when (new.reservation_status = 'active')
+execute function public.check_category_slot_availability();
+
+-- standalone indexes
+
+create index idx_booking_hold_expiration
+on public.booking_hold (expires_at)
+where hold_status = 'active';
+
+create index idx_booking_hold_slot_status_expiry
+on public.booking_hold (slot_id, hold_status, expires_at);
+
+create index idx_booking_hold_user_status
+on public.booking_hold (user_id, hold_status);
+
+create index idx_password_reset_tokens_user_id
+on public.password_reset_tokens (user_id);
+
+create index idx_payment_transaction_reference
+on public.payment (transaction_reference);
+
+create index idx_reservation_schedule_change_reservation
+on public.reservation_schedule_change (reservation_id, created_at desc);
+
+create unique index unique_payment_refund_key
+on public.payment (refund_key)
+where refund_key is not null;
