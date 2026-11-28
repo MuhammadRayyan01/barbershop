@@ -2,7 +2,7 @@
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.7.3",
-      "includeFiles": "{index.php,admin/**,user/**,includes/**,backend/**}",
+      "includeFiles": "{index.php,admin/**,user/**,includes/**,backend/**,assets/**}",
       "maxDuration": 30
     }
   },
