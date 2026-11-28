@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.7.3",
+      "includeFiles": "{index.php,admin/**,user/**,includes/**,backend/**}",
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    { "src": "^/(sql|scripts|node_modules)(/.*)?$", "status": 404, "dest": "/404" },
+    { "src": "^/\\.env.*$", "status": 404, "dest": "/404" },
+    { "src": "^/(.*\\.php)$", "dest": "/api/index.php?__route=$1" },
+    { "handle": "filesystem" },
+    { "src": "^/(.*)$", "dest": "/api/index.php?__route=$1" }
+  ]
+}
