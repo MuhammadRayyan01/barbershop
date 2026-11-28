@@ -26,7 +26,9 @@ function readJsonResponse(): array {
     if(!is_array($data) || array_is_list($data)){
         jsonResponse(400, ['success' => false, 'message' => 'Request body must be json object']);
     }
-    return $data;
+     return $data;
+    }
+   
     
     function requireHttpMethod(string $method): void{
         if(($_SERVER['REQUEST_METHOD'] ?? '') !== $method){
@@ -34,7 +36,6 @@ function readJsonResponse(): array {
 
             jsonResponse(405, ['success' => false, 'message' => 'Method not allowed.']);
         }
-    }
 
 
 }
