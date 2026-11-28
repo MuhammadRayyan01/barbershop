@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/load_env.php';
 
 function sendApplicationEmail(string $recipient, string $subject, string $body): bool
 {
