@@ -144,6 +144,8 @@ $currentYear = (new DateTimeImmutable('now', new DateTimeZone(BOOKING_TIMEZONE))
     </section>
   </main>
 
+  <a class="whatsapp-float" style="position:fixed;right:20px;bottom:20px;z-index:50;display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:9999px;background:#25D366;color:#fff;font-size:14px;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,.18)" href="https://wa.me/6282313128282" target="_blank" rel="noopener noreferrer" aria-label="Chat Pemon Barbershop di WhatsApp"><span aria-hidden="true">✆</span><span>WhatsApp</span></a>
+
   <footer class="site-footer">
     <div class="landing-container footer-inner"><a class="brand" href="/" aria-label="Pemon Barbershop"><span class="brand-mark">P</span><span class="brand-name">PEMON <small>BARBERSHOP</small></span></a><p>© <?= htmlspecialchars($currentYear, ENT_QUOTES, 'UTF-8') ?> Pemon Barbershop. Waktu operasional menggunakan WIB.</p><a href="<?= htmlspecialchars($accountUrl, ENT_QUOTES, 'UTF-8') ?>"><?= $loggedIn ? 'Dashboard pelanggan' : 'Masuk ke akun' ?></a></div>
   </footer>
