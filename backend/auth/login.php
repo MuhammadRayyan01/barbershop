@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 
-header('Content-Type: application/json; cahrset=utf-8');
+header('Content-Type: application/json; charset=utf-8');
 
 function respond(int $status, array $data): never {
     http_response_code($status);
@@ -49,7 +49,7 @@ if($login === '' || $password === ''){
 }
 
 if(strlen($login) > 354 || strlen($password) > 72){
-    respond(402, ['success' => false, 'message' => 'Invalid username/email or password']);
+    respond(401, ['success' => false, 'message' => 'Invalid username/email or password']);
 }
 
 try{
